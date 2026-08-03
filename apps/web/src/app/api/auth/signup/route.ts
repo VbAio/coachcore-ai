@@ -7,6 +7,8 @@ import { generateToken, tokenExpiresHours } from '@/lib/auth/tokens';
 import { sendVerificationEmail } from '@/lib/auth/email';
 import { rateLimit, getClientIp } from '@/lib/auth/rate-limit';
 
+export const runtime = 'nodejs';
+
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request.headers);
@@ -68,6 +70,13 @@ export async function POST(request: Request) {
     });
   } catch (err) {
     console.error('[signup]', err);
-    return NextResponse.json({ error: 'Failed to create account' }, { status: 500 });
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    const isDev = process.env.NODE_ENV === 'development';
+    return NextResponse.json(
+      {
+        error: isDev ? message : 'Failed to create account. Check DATABASE_URL on Vercel and try again.',
+      },
+      { status: 500 }
+    );
   }
 }

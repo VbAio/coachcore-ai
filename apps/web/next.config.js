@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   transpilePackages: ['@coachcore/shared'],
+  serverExternalPackages: ['@node-rs/argon2'],
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'assets-bucket.deadlock-api.com' },
