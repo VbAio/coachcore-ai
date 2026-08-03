@@ -1,0 +1,27 @@
+{
+  "name": "coachcore-ai",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w @coachcore/web\" \"npm run dev -w @coachcore/api\"",
+    "dev:web": "npm run dev -w @coachcore/web",
+    "dev:api": "npm run dev -w @coachcore/api",
+    "build": "npm run build -w @coachcore/shared && npm run build -w @coachcore/replay-parser && npm run build -w @coachcore/ai-coach && npm run build -w @coachcore/api && npm run build -w @coachcore/web",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "db:generate": "npm run db:generate -w @coachcore/api",
+    "db:migrate": "npm run db:migrate -w @coachcore/api",
+    "db:push": "npm run db:push -w @coachcore/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

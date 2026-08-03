@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                      String    @id @default(cuid())
+  username                String    @unique @default(cuid())
+  email                   String    @unique
+  emailVerified           DateTime?
+  passwordHash            String?
+  name                    String?
+  image                   String?
+  displayName             String?
+  avatar                  String?
+  role                    String    @default("user")
+  tier                    String    @default("free")
+  theme                   String    @default("dark")
+  language                String    @default("en")
+  timezone                String    @default("UTC")
+  preferences             Json?
+  savedHeroes             Json?
+  savedMatches            Json?
+  favoriteHeroes          Json?
+  favoriteItems           Json?
+  settings                Json?
+  notificationPreferences Json?
+  failedLoginAttempts     Int       @default(0)
+  lockedUntil             DateTime?
+  lastLogin               DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  refreshTokens RefreshToken[]
+  replays       Replay[]
+  stats         UserStats?
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  userAgent    String?
+  ipAddress    String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expires   DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expires   DateTime
+  userAgent String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model UserStats {
+  id                 String @id @default(cuid())
+  userId             String @unique
+  user               User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalReplays       Int    @default(0)
+  winRate            Float  @default(0)
+  avgMistakesPerGame Float  @default(0)
+  improvementScore   Float  @default(0)
+  mmrPrediction      Float  @default(0)
+  skillHistory       Json?
+  favoriteHeroes     Json?
+}
+
+model Replay {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileName        String
+  filePath        String
+  fileSize        Int
+  status          String   @default("queued")
+  stage           String   @default("queued")
+  progress        Int      @default(0)
+  hero            String?
+  map             String?
+  durationSeconds Int?
+  gameMode        String?
+  version         String?
+  metadata        Json?
+  parserNotes     Json?
+  errorMessage    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  report          CoachingReport?
+}
+
+model CoachingReport {
+  id        String   @id @default(cuid())
+  replayId  String   @unique
+  replay    Replay   @relation(fields: [replayId], references: [id], onDelete: Cascade)
+  grade     String
+  score     Int
+  report    Json
+  createdAt DateTime @default(now())
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  replayId  String
+  userId    String
+  role      String
+  content   String
+  createdAt DateTime @default(now())
+}
