@@ -13,6 +13,7 @@ import {
   SubmitButton,
   FormAlert,
 } from '@/components/auth/form-fields';
+import { getAuthErrorMessage } from '@/lib/auth/oauth-errors';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,15 +25,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(
-    errorParam === 'CredentialsSignin'
-      ? 'Invalid email or password'
-      : errorParam === 'Configuration'
-        ? 'Social sign-in is not configured. Contact support or use email/password.'
-        : errorParam
-          ? 'Sign-in failed. Please try again.'
-          : ''
-  );
+  const [error, setError] = useState(getAuthErrorMessage(errorParam));
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -58,11 +51,11 @@ export default function LoginPage() {
 
   return (
     <AuthLayout title="Welcome back" subtitle="Sign in to sync your coaching data across devices">
+      {error && <FormAlert type="error" message={error} />}
       <OAuthButtons callbackUrl={callbackUrl} />
       <AuthDivider />
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {error && <FormAlert type="error" message={error} />}
 
         <FormField label="Email">
           <TextInput

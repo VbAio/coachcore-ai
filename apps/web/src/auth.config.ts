@@ -41,7 +41,7 @@ export const authConfig = {
       ? [
           Google({
             ...getGoogleOAuthConfig()!,
-            allowDangerousEmailAccountLinking: false,
+            allowDangerousEmailAccountLinking: true,
           }),
         ]
       : []),
@@ -49,7 +49,7 @@ export const authConfig = {
       ? [
           Discord({
             ...getDiscordOAuthConfig()!,
-            allowDangerousEmailAccountLinking: false,
+            allowDangerousEmailAccountLinking: true,
             authorization: { params: { scope: 'identify email' } },
           }),
         ]
