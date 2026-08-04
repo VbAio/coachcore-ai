@@ -26,7 +26,7 @@ export async function GET() {
   return NextResponse.json({
     user: sanitizePublicUser(user),
     authMethods,
-    accounts: user.accounts.map((a) => ({ provider: a.provider })),
+    accounts: user.accounts.map((a: { provider: string }) => ({ provider: a.provider })),
     stats: user.stats,
   });
 }
