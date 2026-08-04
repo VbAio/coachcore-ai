@@ -2,24 +2,23 @@ import {
   deadlockApiProvider,
   type ApiHeroAsset,
   type ApiHeroStat,
-  type ApiLeaderboardEntry,
   type ApiMatchHistoryEntry,
 } from './provider.js';
+import {
+  statlockerProvider,
+  type StatlockerRankedEntry,
+} from './statlocker-provider.js';
 import type {
   HeroAsset,
   LeaderboardPlayer,
   LeaderboardQuery,
-  LeaderboardRegion,
   LeaderboardResponse,
-  LeaderboardSortField,
   PlayerHeroStat,
   PlayerMatchEntry,
   PlayerProfile,
 } from './types.js';
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
-const ENRICH_CONCURRENCY = 8;
-const ENRICH_LIMIT = 50;
 
 interface CacheEntry<T> {
   data: T;
@@ -56,7 +55,7 @@ function steamId3ToSteam64(accountId: number): string {
 
 function avatarUrl(accountId: number): string {
   const steam64 = steamId3ToSteam64(accountId);
-  return `https://avatars.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg`;
+  return `https://avatars.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg?steam=${steam64}`;
 }
 
 function badgeToMmr(badge: number): number {
@@ -70,7 +69,20 @@ function badgeLabel(badge: number): string {
   if (badge <= 0) return 'Unranked';
   const tier = Math.floor(badge / 10);
   const sub = badge % 10;
-  const tiers = ['Obscurus', 'Initiate', 'Seeker', 'Alchemist', 'Arcanist', 'Ritualist', 'Emissary', 'Archon', 'Oracle', 'Phantom', 'Ascendant', 'Eternus'];
+  const tiers = [
+    'Obscurus',
+    'Initiate',
+    'Seeker',
+    'Alchemist',
+    'Arcanist',
+    'Ritualist',
+    'Emissary',
+    'Archon',
+    'Oracle',
+    'Phantom',
+    'Ascendant',
+    'Eternus',
+  ];
   return `${tiers[Math.min(tier, tiers.length - 1)] ?? 'Unknown'} ${sub}`;
 }
 
@@ -78,7 +90,9 @@ function isWin(match: ApiMatchHistoryEntry): boolean {
   return match.match_result === match.player_team;
 }
 
-function computeStreak(matches: ApiMatchHistoryEntry[]): { type: 'win' | 'loss' | 'none'; count: number } {
+function computeStreak(
+  matches: ApiMatchHistoryEntry[]
+): { type: 'win' | 'loss' | 'none'; count: number } {
   if (!matches.length) return { type: 'none', count: 0 };
   const firstWin = isWin(matches[0]);
   let count = 0;
@@ -159,270 +173,116 @@ async function getHeroAssets(): Promise<Map<number, HeroAsset>> {
   }
 }
 
-function cacheEntryNames(entries: ApiLeaderboardEntry[]): void {
-  for (const entry of entries) {
-    const id = resolveAccountId(entry);
-    if (id && entry.account_name) {
-      playerNameCache.set(String(id), entry.account_name);
-    }
-  }
+function mapRegionLabel(code: string | null | undefined, fallback: string): string {
+  if (!code) return fallback;
+  const map: Record<string, string> = {
+    NA: 'NAmerica',
+    EU: 'Europe',
+    SA: 'SAmerica',
+    Asia: 'Asia',
+    OCE: 'Oceania',
+    Global: 'Global',
+  };
+  return map[code] ?? code;
 }
 
-function resolveAccountId(entry: ApiLeaderboardEntry): number | null {
-  return entry.possible_account_ids?.[0] ?? null;
-}
-
-function toBasicPlayer(
-  entry: ApiLeaderboardEntry,
-  position: number,
-  region: string,
-  heroes: Map<number, HeroAsset>,
+function mapStatlockerEntry(
+  entry: StatlockerRankedEntry,
+  boardRegion: string,
   prevRankMap: Map<string, number> | undefined
-): LeaderboardPlayer | null {
-  const accountId = resolveAccountId(entry);
-  if (!accountId) return null;
-
-  const steamId = String(accountId);
-  const favoriteHeroId = entry.top_hero_ids?.[0] ?? null;
-  const heroAsset = favoriteHeroId ? heroes.get(favoriteHeroId) : null;
+): LeaderboardPlayer {
+  const steamId = String(entry.accountId);
+  playerNameCache.set(steamId, entry.name);
   const rankChange = prevRankMap?.has(steamId)
-    ? (prevRankMap.get(steamId)! - position)
+    ? prevRankMap.get(steamId)! - entry.position
     : null;
+
+  // Statlocker seasonWinRate is already a percentage (e.g. 71.1)
+  const winRate =
+    entry.seasonGames > 0 ? Math.min(1, Math.max(0, entry.seasonWinRate / 100)) : 0;
 
   return {
     steamId,
-    rank: position,
-    playerName: entry.account_name ?? `Player ${accountId}`,
-    avatar: avatarUrl(accountId),
-    mmr: 0,
-    wins: 0,
-    losses: 0,
-    winRate: 0,
+    rank: entry.position,
+    playerName: entry.name || `Player ${entry.accountId}`,
+    avatar: entry.avatarUrl || avatarUrl(entry.accountId),
+    mmr: entry.flatProgress || entry.ppScore || 0,
+    wins: entry.seasonWins ?? 0,
+    losses: entry.seasonLosses ?? 0,
+    winRate,
     kda: 0,
     averageSouls: 0,
     averagePlayerDamage: 0,
     averageObjectiveDamage: 0,
     averageHealing: 0,
-    favoriteHero: heroAsset?.name ?? (favoriteHeroId ? `Hero ${favoriteHeroId}` : 'Unknown'),
-    favoriteHeroId,
-    favoriteHeroSlug: heroAsset?.slug ?? null,
-    favoriteHeroPortrait: heroAsset?.portrait ?? '',
-    region,
+    favoriteHero: '',
+    favoriteHeroId: null,
+    favoriteHeroSlug: null,
+    favoriteHeroPortrait: '',
+    region: mapRegionLabel(entry.region, boardRegion),
     lastUpdated: new Date().toISOString(),
     rankChange,
     streak: { type: 'none', count: 0 },
-    gamesPlayed: 0,
+    gamesPlayed: entry.seasonGames ?? 0,
+    rankName: entry.rankName,
+    rankNumber: entry.rankNumber,
+    points: entry.points,
+    pointsOutOf: entry.pointsOutOf,
+    ppRankName: entry.ppRankName,
+    ppScore: entry.ppScore,
   };
 }
 
-async function enrichEntry(
-  entry: ApiLeaderboardEntry,
-  position: number,
-  region: string,
-  heroes: Map<number, HeroAsset>,
-  prevRankMap: Map<string, number> | undefined
-): Promise<LeaderboardPlayer | null> {
-  const accountId = resolveAccountId(entry);
-  if (!accountId) return null;
-
-  const steamId = String(accountId);
-  const playerName = entry.account_name ?? `Player ${accountId}`;
-
-  let stats = {
-    wins: 0,
-    losses: 0,
-    gamesPlayed: 0,
-    winRate: 0,
-    kda: 0,
-    averageSouls: 0,
-    averagePlayerDamage: 0,
-    averageObjectiveDamage: 0,
-    averageHealing: 0,
-  };
-  let mmr = 0;
-  let streak = { type: 'none' as const, count: 0 };
-
-  try {
-    const [heroStats, rankData] = await Promise.all([
-      deadlockApiProvider.fetchHeroStats(accountId).catch(() => [] as ApiHeroStat[]),
-      deadlockApiProvider.fetchPlayerRank(accountId).catch(() => ({ badge: 0, rank: 0, subrank: 0 })),
-    ]);
-
-    stats = aggregateHeroStats(heroStats);
-    mmr = badgeToMmr(rankData.badge);
-  } catch (err) {
-    console.error(`[leaderboard] Enrich failed for ${accountId}:`, err);
-  }
-
-  const favoriteHeroId = entry.top_hero_ids?.[0] ?? null;
-  const heroAsset = favoriteHeroId ? heroes.get(favoriteHeroId) : null;
-
-  const rankChange = prevRankMap?.has(steamId)
-    ? (prevRankMap.get(steamId)! - position)
-    : null;
-
-  return {
-    steamId,
-    rank: position,
-    playerName,
-    avatar: avatarUrl(accountId),
-    mmr,
-    wins: stats.wins,
-    losses: stats.losses,
-    winRate: stats.winRate,
-    kda: stats.kda,
-    averageSouls: stats.averageSouls,
-    averagePlayerDamage: stats.averagePlayerDamage,
-    averageObjectiveDamage: stats.averageObjectiveDamage,
-    averageHealing: stats.averageHealing,
-    favoriteHero: heroAsset?.name ?? (favoriteHeroId ? `Hero ${favoriteHeroId}` : 'Unknown'),
-    favoriteHeroId,
-    favoriteHeroSlug: heroAsset?.slug ?? null,
-    favoriteHeroPortrait: heroAsset?.portrait ?? '',
-    region,
-    lastUpdated: new Date().toISOString(),
-    rankChange,
-    streak,
-    gamesPlayed: stats.gamesPlayed,
-  };
-}
-
-async function enrichBatch(
-  entries: ApiLeaderboardEntry[],
-  region: string,
-  offset: number,
-  prevRankMap: Map<string, number> | undefined
-): Promise<LeaderboardPlayer[]> {
-  const heroes = await getHeroAssets();
-  const results: LeaderboardPlayer[] = [];
-
-  for (let i = 0; i < entries.length; i += ENRICH_CONCURRENCY) {
-    const batch = entries.slice(i, i + ENRICH_CONCURRENCY);
-    const enriched = await Promise.all(
-      batch.map((entry, idx) =>
-        enrichEntry(entry, offset + i + idx + 1, region, heroes, prevRankMap)
-      )
-    );
-    results.push(...enriched.filter((p): p is LeaderboardPlayer => p !== null));
-  }
-
-  return results;
-}
-
-function sortPlayers(
-  players: LeaderboardPlayer[],
-  sortBy: LeaderboardSortField,
-  sortDir: 'asc' | 'desc'
-): LeaderboardPlayer[] {
-  const dir = sortDir === 'asc' ? 1 : -1;
-  return [...players].sort((a, b) => {
-    if (sortBy === 'lastUpdated') {
-      return (
-        (new Date(a.lastUpdated).getTime() - new Date(b.lastUpdated).getTime()) * dir
-      );
-    }
-    const av = a[sortBy as keyof LeaderboardPlayer];
-    const bv = b[sortBy as keyof LeaderboardPlayer];
-    if (typeof av === 'number' && typeof bv === 'number') {
-      return (av - bv) * dir;
-    }
-    if (typeof av === 'string' && typeof bv === 'string') {
-      return av.localeCompare(bv) * dir;
-    }
-    return 0;
-  });
-}
-
-function filterPlayers(players: LeaderboardPlayer[], query: LeaderboardQuery): LeaderboardPlayer[] {
-  return players.filter((p) => {
-    if (query.search && !p.playerName.toLowerCase().includes(query.search.toLowerCase())) {
-      return false;
-    }
-    if (query.minRating != null && p.mmr < query.minRating) return false;
-    if (query.maxRating != null && p.mmr > query.maxRating) return false;
-    if (query.minWinRate != null && p.winRate < query.minWinRate / 100) return false;
-    if (query.minGames != null && p.gamesPlayed < query.minGames) return false;
-    if (query.heroId != null && p.favoriteHeroId !== query.heroId) return false;
-    return true;
-  });
-}
-
-const REGION_API_MAP: Record<string, string> = {
-  Global: 'NAmerica',
-  NAmerica: 'NAmerica',
-  Europe: 'Europe',
-  SAmerica: 'SAmerica',
-  Asia: 'Asia',
-  Oceania: 'Oceania',
-};
-
-export async function fetchLeaderboard(query: LeaderboardQuery = {}): Promise<LeaderboardResponse> {
-  const region = query.region ?? 'NAmerica';
-  const apiRegion = REGION_API_MAP[region] ?? 'NAmerica';
+export async function fetchLeaderboard(
+  query: LeaderboardQuery = {}
+): Promise<LeaderboardResponse> {
+  const region = query.region ?? 'Global';
   const limit = Math.min(query.limit ?? 100, 500);
   const offset = query.offset ?? 0;
-  const cacheKey = `lb:${region}:${query.heroId ?? 'all'}`;
+  const pageSize = limit;
+  const page = Math.floor(offset / pageSize) + 1;
+  const cacheKey = `lb:statlocker:${region}:${page}:${pageSize}`;
 
-  let allEntries: ApiLeaderboardEntry[];
+  const cached = getCached<LeaderboardResponse>(cacheKey);
+  if (cached) return cached;
 
-  const cached = getCached<ApiLeaderboardEntry[]>(cacheKey);
-  if (cached) {
-    allEntries = cached;
-    cacheEntryNames(allEntries);
-  } else {
-    try {
-      const data = await deadlockApiProvider.fetchLeaderboard(apiRegion, query.heroId);
-      allEntries = data.entries ?? [];
-      cacheEntryNames(allEntries);
-      setCache(cacheKey, allEntries);
+  try {
+    const data = await statlockerProvider.fetchRankedLeaderboard({
+      region,
+      page,
+      pageSize,
+    });
 
-      const rankMap = new Map<string, number>();
-      allEntries.forEach((e, i) => {
-        const id = resolveAccountId(e);
-        if (id) rankMap.set(String(id), i + 1);
-      });
-      previousRanks.set(cacheKey, rankMap);
-    } catch (err) {
-      console.error('[leaderboard] Fetch failed:', err);
-      return {
-        players: [],
-        total: 0,
-        region,
-        lastFetchedAt: new Date().toISOString(),
-        source: 'deadlock-api',
-      };
+    const prevRankMap = previousRanks.get(`lb:statlocker:${region}`);
+    const rankMap = new Map<string, number>();
+    for (const e of data.data ?? []) {
+      rankMap.set(String(e.accountId), e.position);
     }
+    previousRanks.set(`lb:statlocker:${region}`, rankMap);
+
+    const players = (data.data ?? []).map((entry) =>
+      mapStatlockerEntry(entry, region, prevRankMap)
+    );
+
+    const response: LeaderboardResponse = {
+      players,
+      total: data.totalCount ?? players.length,
+      region,
+      lastFetchedAt: new Date().toISOString(),
+      source: 'statlocker',
+    };
+    setCache(cacheKey, response);
+    return response;
+  } catch (err) {
+    console.error('[leaderboard] Statlocker fetch failed:', err);
+    return {
+      players: [],
+      total: 0,
+      region,
+      lastFetchedAt: new Date().toISOString(),
+      source: 'statlocker',
+    };
   }
-
-  const prevRankMap = previousRanks.get(cacheKey);
-  const slice = allEntries.slice(offset, offset + limit);
-
-  const enrichCacheKey = `${cacheKey}:enriched:${offset}:${limit}`;
-  let players = getCached<LeaderboardPlayer[]>(enrichCacheKey);
-
-  if (!players) {
-    const heroes = await getHeroAssets();
-    players = slice.map((entry, idx) =>
-      toBasicPlayer(entry, offset + idx + 1, region, heroes, prevRankMap)
-    ).filter((p): p is LeaderboardPlayer => p !== null);
-
-    const toEnrich = slice.slice(0, ENRICH_LIMIT);
-    if (toEnrich.length > 0) {
-      const enriched = await enrichBatch(toEnrich, region, offset, prevRankMap);
-      const enrichedById = new Map(enriched.map((p) => [p.steamId, p]));
-      players = players.map((p) => enrichedById.get(p.steamId) ?? p);
-    }
-
-    setCache(enrichCacheKey, players, CACHE_TTL_MS);
-  }
-
-  return {
-    players,
-    total: allEntries.length,
-    region,
-    lastFetchedAt: new Date().toISOString(),
-    source: 'deadlock-api',
-  };
 }
 
 export async function fetchPlayerProfile(steamId: string): Promise<PlayerProfile | null> {
@@ -437,7 +297,11 @@ export async function fetchPlayerProfile(steamId: string): Promise<PlayerProfile
     const heroes = await getHeroAssets();
     const [heroStats, rankData, matchHistory, mmrHistory] = await Promise.all([
       deadlockApiProvider.fetchHeroStats(accountId),
-      deadlockApiProvider.fetchPlayerRank(accountId).catch(() => ({ badge: 0, rank: 0, subrank: 0 })),
+      deadlockApiProvider.fetchPlayerRank(accountId).catch(() => ({
+        badge: 0,
+        rank: 0,
+        subrank: 0,
+      })),
       deadlockApiProvider.fetchMatchHistory(accountId, 25),
       deadlockApiProvider.fetchMmrHistory(accountId, 30).catch(() => []),
     ]);
@@ -450,8 +314,8 @@ export async function fetchPlayerProfile(steamId: string): Promise<PlayerProfile
       .slice(0, 8)
       .map((s) => {
         const hero = heroes.get(s.hero_id);
-        const losses = s.matches_played - s.wins;
-        const kda = s.deaths > 0 ? (s.kills + s.assists) / s.deaths : s.kills + s.assists;
+        const kda =
+          s.deaths > 0 ? (s.kills + s.assists) / s.deaths : s.kills + s.assists;
         return {
           heroId: s.hero_id,
           heroName: hero?.name ?? `Hero ${s.hero_id}`,

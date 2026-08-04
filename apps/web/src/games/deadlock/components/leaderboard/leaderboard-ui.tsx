@@ -126,10 +126,14 @@ export function getRegionFlag(region: string): string {
   const flags: Record<string, string> = {
     Global: '🌍',
     NAmerica: '🇺🇸',
+    NA: '🇺🇸',
     Europe: '🇪🇺',
+    EU: '🇪🇺',
     SAmerica: '🇧🇷',
+    SA: '🇧🇷',
     Asia: '🌏',
     Oceania: '🇦🇺',
+    OCE: '🇦🇺',
   };
   return flags[region] ?? '🌍';
 }

@@ -7,13 +7,10 @@ import { useRef } from 'react';
 import type { LeaderboardPlayer, LeaderboardSortField } from '@/types/leaderboard';
 import { useGamePath } from '@/shared/context/game-context';
 import {
-  formatKda,
-  formatNumber,
   formatWinRate,
   getRegionFlag,
   RankChange,
   SortHeader,
-  StreakBadge,
 } from './leaderboard-ui';
 
 interface LeaderboardTableProps {
@@ -25,7 +22,7 @@ interface LeaderboardTableProps {
 
 const ROW_HEIGHT = 64;
 const GRID_COLS =
-  'grid-cols-[56px_minmax(200px,2fr)_88px_64px_64px_72px_64px_minmax(120px,1fr)_56px]';
+  'grid-cols-[56px_minmax(180px,2fr)_minmax(110px,1fr)_72px_minmax(110px,1fr)_88px_64px_56px]';
 
 export function LeaderboardTable({
   players,
@@ -34,7 +31,6 @@ export function LeaderboardTable({
   onSort,
 }: LeaderboardTableProps) {
   const parentRef = useRef<HTMLDivElement>(null);
-  const heroesPath = useGamePath('heroes');
   const playerPath = useGamePath('player');
 
   const virtualizer = useVirtualizer({
@@ -48,18 +44,21 @@ export function LeaderboardTable({
     <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] shadow-xl shadow-black/20">
       <div className="sticky top-0 z-10 hidden border-b border-white/10 bg-black/80 backdrop-blur-xl lg:block">
         <div className={`grid ${GRID_COLS} gap-3 px-4 py-3`}>
-          <SortHeader label="Rank" field="rank" current={sortBy} dir={sortDir} onSort={onSort} />
+          <SortHeader label="#" field="rank" current={sortBy} dir={sortDir} onSort={onSort} />
           <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
             Player
           </span>
-          <SortHeader label="Rating" field="mmr" current={sortBy} dir={sortDir} onSort={onSort} />
-          <SortHeader label="Wins" field="wins" current={sortBy} dir={sortDir} onSort={onSort} />
-          <SortHeader label="Loss" field="losses" current={sortBy} dir={sortDir} onSort={onSort} />
+          <SortHeader label="Rank" field="mmr" current={sortBy} dir={sortDir} onSort={onSort} />
+          <SortHeader label="Points" field="points" current={sortBy} dir={sortDir} onSort={onSort} />
+          <SortHeader
+            label="Perf Rank"
+            field="ppScore"
+            current={sortBy}
+            dir={sortDir}
+            onSort={onSort}
+          />
+          <SortHeader label="Season" field="wins" current={sortBy} dir={sortDir} onSort={onSort} />
           <SortHeader label="WR" field="winRate" current={sortBy} dir={sortDir} onSort={onSort} />
-          <SortHeader label="KDA" field="kda" current={sortBy} dir={sortDir} onSort={onSort} />
-          <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-            Hero
-          </span>
           <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
             Region
           </span>
@@ -84,7 +83,7 @@ export function LeaderboardTable({
               >
                 <Link
                   href={`${playerPath}/${player.steamId}`}
-                  className={`group flex h-full items-center gap-3 border-b border-white/5 px-4 transition-colors hover:bg-purple-500/5 lg:grid ${GRID_COLS} lg:gap-3`}
+                  className={`group flex h-full items-center gap-3 border-b border-white/5 px-4 transition-colors hover:bg-emerald-500/5 lg:grid ${GRID_COLS} lg:gap-3`}
                 >
                   <div className="flex w-14 shrink-0 items-center gap-1 lg:w-auto">
                     <span className="font-bold text-zinc-300">#{player.rank}</span>
@@ -101,70 +100,59 @@ export function LeaderboardTable({
                         unoptimized
                       />
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p
-                        className="truncate font-medium text-white group-hover:text-purple-200"
-                        title={player.playerName}
-                      >
-                        {player.playerName}
-                      </p>
-                      <StreakBadge streak={player.streak} />
-                    </div>
+                    <p
+                      className="truncate font-medium text-white group-hover:text-emerald-200"
+                      title={player.playerName}
+                    >
+                      {player.playerName}
+                    </p>
                   </div>
 
-                  <span className="hidden font-semibold text-purple-300 lg:block">
-                    {formatNumber(player.mmr)}
-                  </span>
-                  <span className="hidden text-green-400 lg:block">{player.wins}</span>
-                  <span className="hidden text-red-400 lg:block">{player.losses}</span>
-                  <span className="hidden text-zinc-300 lg:block">
-                    {formatWinRate(player.winRate)}
-                  </span>
-                  <span className="hidden text-zinc-300 lg:block">{formatKda(player.kda)}</span>
+                  <div className="hidden min-w-0 lg:block">
+                    <p className="truncate font-semibold text-amber-200/90">
+                      {player.rankName ?? '—'}
+                    </p>
+                  </div>
 
-                  <div
-                    className="hidden min-w-0 lg:flex lg:items-center lg:gap-2"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {player.favoriteHeroSlug ? (
-                      <Link
-                        href={`${heroesPath}/${player.favoriteHeroSlug}`}
-                        className="flex min-w-0 items-center gap-2 rounded-lg px-1 py-0.5 transition-colors hover:bg-white/5"
-                      >
-                        {player.favoriteHeroPortrait ? (
-                          <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-lg">
-                            <Image
-                              src={player.favoriteHeroPortrait}
-                              alt={player.favoriteHero}
-                              fill
-                              className="object-cover"
-                              unoptimized
-                            />
-                          </div>
-                        ) : (
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-purple-500/20 text-xs font-bold text-purple-300">
-                            {player.favoriteHero.charAt(0)}
-                          </div>
-                        )}
-                        <span className="truncate text-xs text-zinc-400 group-hover:text-purple-300">
-                          {player.favoriteHero}
-                        </span>
-                      </Link>
-                    ) : (
-                      <span className="truncate text-xs text-zinc-500">{player.favoriteHero}</span>
+                  <span className="hidden font-mono text-sm text-zinc-200 lg:block">
+                    {player.points != null
+                      ? `${player.points}${player.pointsOutOf ? `/${player.pointsOutOf}` : ''}`
+                      : '—'}
+                  </span>
+
+                  <div className="hidden min-w-0 lg:block">
+                    <p className="truncate text-sm text-emerald-300/90">
+                      {player.ppRankName ?? '—'}
+                    </p>
+                    {player.ppScore != null && (
+                      <p className="text-[10px] text-zinc-500">{player.ppScore} PP</p>
                     )}
                   </div>
+
+                  <span className="hidden text-sm lg:block">
+                    <span className="text-green-400">{player.wins}</span>
+                    <span className="text-zinc-600">-</span>
+                    <span className="text-red-400">{player.losses}</span>
+                  </span>
+
+                  <span
+                    className={`hidden text-sm lg:block ${
+                      player.gamesPlayed < 20 ? 'text-zinc-500' : 'text-zinc-300'
+                    }`}
+                  >
+                    {formatWinRate(player.winRate)}
+                  </span>
 
                   <span className="hidden text-lg lg:block" title={player.region}>
                     {getRegionFlag(player.region)}
                   </span>
 
                   <div className="ml-auto shrink-0 flex flex-col items-end lg:hidden">
-                    <span className="font-semibold text-purple-300">
-                      #{player.rank} · {formatNumber(player.mmr)}
+                    <span className="font-semibold text-amber-200/90">
+                      #{player.rank} · {player.rankName ?? '—'}
                     </span>
                     <span className="text-xs text-zinc-500">
-                      {formatWinRate(player.winRate)} · {formatKda(player.kda)} KDA
+                      {player.wins}-{player.losses} · {formatWinRate(player.winRate)}
                     </span>
                   </div>
                 </Link>

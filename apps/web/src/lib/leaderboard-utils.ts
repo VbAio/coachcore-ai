@@ -45,8 +45,18 @@ export function sortLeaderboardPlayers(
         (new Date(a.lastUpdated).getTime() - new Date(b.lastUpdated).getTime()) * dir
       );
     }
-    const av = a[sortBy as keyof LeaderboardPlayer];
-    const bv = b[sortBy as keyof LeaderboardPlayer];
+    const av =
+      sortBy === 'points'
+        ? (a.points ?? 0)
+        : sortBy === 'ppScore'
+          ? (a.ppScore ?? 0)
+          : a[sortBy as keyof LeaderboardPlayer];
+    const bv =
+      sortBy === 'points'
+        ? (b.points ?? 0)
+        : sortBy === 'ppScore'
+          ? (b.ppScore ?? 0)
+          : b[sortBy as keyof LeaderboardPlayer];
     if (typeof av === 'number' && typeof bv === 'number') {
       return (av - bv) * dir;
     }
@@ -62,10 +72,10 @@ export function applyClientLeaderboardView(
   filters: ClientLeaderboardFilters
 ): LeaderboardPlayer[] {
   const filtered = filterLeaderboardPlayers(players, filters);
-  const sorted = sortLeaderboardPlayers(
+  // Preserve Statlocker ladder positions — do not renumber after client sort/filter
+  return sortLeaderboardPlayers(
     filtered,
     filters.sortBy ?? 'rank',
     filters.sortDir ?? 'asc'
   );
-  return sorted.map((p, i) => ({ ...p, rank: i + 1 }));
 }

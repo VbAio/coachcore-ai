@@ -12,6 +12,8 @@ export type LeaderboardSortField =
   | 'wins'
   | 'losses'
   | 'winRate'
+  | 'points'
+  | 'ppScore'
   | 'kda'
   | 'averageSouls'
   | 'averagePlayerDamage'
@@ -24,9 +26,11 @@ export interface LeaderboardPlayer {
   rank: number;
   playerName: string;
   avatar: string;
+  /** Sortable rating proxy — Statlocker flatProgress */
   mmr: number;
   wins: number;
   losses: number;
+  /** 0–1 fraction */
   winRate: number;
   kda: number;
   averageSouls: number;
@@ -42,6 +46,15 @@ export interface LeaderboardPlayer {
   rankChange: number | null;
   streak: { type: 'win' | 'loss' | 'none'; count: number };
   gamesPlayed: number;
+  /** Statlocker Valve rank display name (e.g. Ascendant 2) */
+  rankName?: string;
+  rankNumber?: number;
+  /** Points within current rank */
+  points?: number;
+  pointsOutOf?: number;
+  /** Statlocker Performance Rank */
+  ppRankName?: string | null;
+  ppScore?: number | null;
 }
 
 export interface LeaderboardQuery {
