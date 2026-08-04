@@ -1,11 +1,37 @@
-import type { ChatCoachMessage, CoachingReport, ParsedReplay } from '@coachcore/shared';
+import type { ChatCoachMessage, CoachingReport, CoachInsight, ParsedReplay } from '@coachcore/shared';
 import type { ExtractedFeatures } from '@coachcore/replay-parser';
+import { extractFeatures } from '@coachcore/replay-parser';
+import { detectMistakes } from '../modules/mistake-detector.js';
 import type { CoachProvider, CoachProviderConfig } from './coach-provider.interface.js';
 import { buildReportFromPipeline } from '../pipeline/coaching-pipeline.js';
 
+interface AiEnhancementPayload {
+  currentPerformance?: string;
+  biggestWeakness?: string;
+  biggestStrength?: string;
+  topPriorities?: string[];
+  overviewSummary?: string;
+  insightEnhancements?: Array<{
+    index?: number;
+    title?: string;
+    whatHappened?: string;
+    whyItHappened?: string;
+    whyBadOrGood?: string;
+    alternativePlay?: string;
+    howToImprove?: string;
+    drills?: string[];
+  }>;
+  improvementPlan?: {
+    todaysFocus?: string;
+    weeklyFocus?: string;
+    practiceDrills?: string[];
+    goalForNextMatch?: string;
+  };
+}
+
 /**
  * OpenAI-powered coach provider.
- * Falls back to rule-based report if API call fails.
+ * Builds a rule-based report, then merges validated AI enhancements.
  */
 export class OpenAICoachProvider implements CoachProvider {
   readonly name = 'openai';
@@ -15,7 +41,11 @@ export class OpenAICoachProvider implements CoachProvider {
     this.config = config;
   }
 
-  async generateReport(replay: ParsedReplay, features: ExtractedFeatures, replayId?: string): Promise<CoachingReport> {
+  async generateReport(
+    replay: ParsedReplay,
+    features: ExtractedFeatures,
+    replayId?: string
+  ): Promise<CoachingReport> {
     const baseReport = buildReportFromPipeline(replayId ?? `openai-${Date.now()}`, replay);
 
     if (!this.config.apiKey) {
@@ -23,6 +53,45 @@ export class OpenAICoachProvider implements CoachProvider {
     }
 
     try {
+      const mistakes = detectMistakes(replay, features);
+      const subject = replay.metadata.players.find((p) => p.isSubject);
+      const compact = {
+        hero: subject?.hero,
+        playerName: subject?.name,
+        kda: subject
+          ? `${subject.kills}/${subject.deaths}/${subject.assists}`
+          : null,
+        durationSeconds: replay.metadata.durationSeconds,
+        map: replay.metadata.map,
+        extractionConfidence: replay.extractionConfidence,
+        features: {
+          gpm: features.gpm,
+          xpm: features.xpm,
+          lanePhaseDeaths: features.lanePhaseDeaths,
+          midGameDeaths: features.midGameDeaths,
+          lateGameDeaths: features.lateGameDeaths,
+          fightParticipation: features.fightParticipation,
+          objectiveParticipation: features.objectiveParticipation,
+          abilityCastCount: features.abilityCastCount,
+          isEstimate: features.isEstimate,
+        },
+        topMistakes: mistakes.slice(0, 8).map((m, index) => ({
+          index,
+          timestamp: m.timestamp,
+          title: m.title,
+          category: m.category,
+          severity: m.severity,
+          whatHappened: m.whatHappened,
+          isEstimate: m.isEstimate,
+        })),
+        parserNotes: replay.parserNotes.slice(0, 8),
+        grades: {
+          overallGrade: baseReport.overallGrade,
+          overallScore: baseReport.overallScore,
+          biggestWeakness: baseReport.biggestWeakness,
+        },
+      };
+
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -34,20 +103,41 @@ export class OpenAICoachProvider implements CoachProvider {
           messages: [
             {
               role: 'system',
-              content:
-                'You are an expert Deadlock esports coach. Enhance coaching insights with specific, actionable advice. Never just list stats.',
+              content: `You are an expert Deadlock esports coach. Enhance a structured coaching report.
+Never invent fake timestamps. Use the provided mistake indexes.
+Return ONLY JSON matching:
+{
+  "currentPerformance": string,
+  "biggestWeakness": string,
+  "biggestStrength": string,
+  "topPriorities": [string, string, string],
+  "overviewSummary": string,
+  "insightEnhancements": [{
+    "index": number,
+    "title": string,
+    "whatHappened": string,
+    "whyItHappened": string,
+    "whyBadOrGood": string,
+    "alternativePlay": string,
+    "howToImprove": string,
+    "drills": string[]
+  }],
+  "improvementPlan": {
+    "todaysFocus": string,
+    "weeklyFocus": string,
+    "practiceDrills": string[],
+    "goalForNextMatch": string
+  }
+}
+Explain what happened, why, what to do instead, and drills. Do not just list stats.`,
             },
             {
               role: 'user',
-              content: JSON.stringify({
-                hero: replay.metadata.players.find((p) => p.isSubject)?.hero,
-                duration: replay.metadata.durationSeconds,
-                features,
-                parserNotes: replay.parserNotes,
-              }),
+              content: JSON.stringify(compact),
             },
           ],
           response_format: { type: 'json_object' },
+          temperature: 0.4,
         }),
       });
 
@@ -55,8 +145,16 @@ export class OpenAICoachProvider implements CoachProvider {
         return baseReport;
       }
 
-      // Merge AI enhancements into base report when available
-      return baseReport;
+      const data = (await response.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+      };
+      const raw = data.choices?.[0]?.message?.content;
+      if (!raw) return baseReport;
+
+      const enhancement = parseEnhancement(raw);
+      if (!enhancement) return baseReport;
+
+      return mergeEnhancement(baseReport, enhancement, mistakes.length);
     } catch {
       return baseReport;
     }
@@ -75,6 +173,8 @@ export class OpenAICoachProvider implements CoachProvider {
     }
 
     try {
+      const features = extractFeatures(replay);
+      const subject = replay.metadata.players.find((p) => p.isSubject);
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -86,7 +186,11 @@ export class OpenAICoachProvider implements CoachProvider {
           messages: [
             {
               role: 'system',
-              content: `You are CoachCore AI. Reference replay timestamps. Report summary: grade ${report.overallGrade}, weakness ${report.biggestWeakness}. Parser notes: ${replay.parserNotes.join('; ')}`,
+              content: `You are CoachCore AI for Deadlock. Reference replay timestamps when helpful.
+Subject: ${subject?.name ?? 'player'} on ${subject?.hero ?? 'unknown'} (${subject ? `${subject.kills}/${subject.deaths}/${subject.assists}` : 'n/a'}).
+Report: grade ${report.overallGrade}, weakness ${report.biggestWeakness}, strength ${report.biggestStrength}.
+Confidence: ${replay.extractionConfidence}. Notes: ${replay.parserNotes.slice(0, 5).join('; ')}.
+Features: GPM~${features.gpm}, fight participation ${(features.fightParticipation * 100).toFixed(0)}%.`,
             },
             ...messages.map((m) => ({ role: m.role, content: m.content })),
           ],
@@ -108,4 +212,100 @@ export class OpenAICoachProvider implements CoachProvider {
       };
     }
   }
+}
+
+function parseEnhancement(raw: string): AiEnhancementPayload | null {
+  try {
+    const parsed = JSON.parse(raw) as AiEnhancementPayload;
+    if (!parsed || typeof parsed !== 'object') return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function asString(value: unknown, fallback: string): string {
+  return typeof value === 'string' && value.trim() ? value.trim() : fallback;
+}
+
+function asStringArray(value: unknown, fallback: string[]): string[] {
+  if (!Array.isArray(value)) return fallback;
+  const items = value.filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
+  return items.length > 0 ? items : fallback;
+}
+
+function mergeEnhancement(
+  base: CoachingReport,
+  ai: AiEnhancementPayload,
+  mistakeCount: number
+): CoachingReport {
+  const priorities = asStringArray(ai.topPriorities, [...base.topPriorities]).slice(0, 3);
+  while (priorities.length < 3) priorities.push(base.topPriorities[priorities.length] ?? 'Fundamentals');
+
+  const timeline = base.timeline.map((insight, index) =>
+    enhanceInsight(insight, ai.insightEnhancements?.find((e) => e.index === index), index, mistakeCount)
+  );
+  const lanePhaseAnalysis = base.lanePhaseAnalysis.map((insight, index) =>
+    enhanceInsight(insight, ai.insightEnhancements?.find((e) => e.index === index), index, mistakeCount)
+  );
+
+  const plan = ai.improvementPlan ?? {};
+
+  return {
+    ...base,
+    currentPerformance: asString(ai.currentPerformance, base.currentPerformance),
+    biggestWeakness: asString(ai.biggestWeakness, base.biggestWeakness),
+    biggestStrength: asString(ai.biggestStrength, base.biggestStrength),
+    topPriorities: priorities as [string, string, string],
+    timeline,
+    lanePhaseAnalysis,
+    // Stash a short AI overview into hero-specific coaching as a lead insight when provided
+    heroSpecificCoaching: ai.overviewSummary
+      ? [
+          {
+            timestamp: 0,
+            title: 'Coach summary',
+            whatHappened: ai.overviewSummary,
+            whyItHappened: base.biggestWeakness,
+            whyBadOrGood: base.currentPerformance,
+            alternativePlay: priorities[0] ?? base.topPriorities[0],
+            expectedOutcome: base.potentialRank,
+            howToImprove: asString(plan.todaysFocus, base.improvementPlan.todaysFocus),
+            drills: asStringArray(plan.practiceDrills, base.improvementPlan.practiceDrills).slice(0, 5),
+            category: 'decision_making',
+            severity: 'medium',
+            isEstimate: base.estimatedSections.length > 0,
+          } satisfies CoachInsight,
+          ...base.heroSpecificCoaching,
+        ]
+      : base.heroSpecificCoaching,
+    improvementPlan: {
+      ...base.improvementPlan,
+      todaysFocus: asString(plan.todaysFocus, base.improvementPlan.todaysFocus),
+      weeklyFocus: asString(plan.weeklyFocus, base.improvementPlan.weeklyFocus),
+      practiceDrills: asStringArray(plan.practiceDrills, base.improvementPlan.practiceDrills),
+      goalForNextMatch: asString(plan.goalForNextMatch, base.improvementPlan.goalForNextMatch),
+    },
+  };
+}
+
+function enhanceInsight(
+  insight: CoachInsight,
+  patch:
+    | NonNullable<AiEnhancementPayload['insightEnhancements']>[number]
+    | undefined,
+  index: number,
+  mistakeCount: number
+): CoachInsight {
+  if (!patch || index >= mistakeCount) return insight;
+  return {
+    ...insight,
+    title: asString(patch.title, insight.title),
+    whatHappened: asString(patch.whatHappened, insight.whatHappened),
+    whyItHappened: asString(patch.whyItHappened, insight.whyItHappened),
+    whyBadOrGood: asString(patch.whyBadOrGood, insight.whyBadOrGood),
+    alternativePlay: asString(patch.alternativePlay, insight.alternativePlay),
+    howToImprove: asString(patch.howToImprove, insight.howToImprove),
+    drills: asStringArray(patch.drills, insight.drills),
+  };
 }

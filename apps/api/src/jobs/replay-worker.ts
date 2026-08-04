@@ -8,6 +8,7 @@ export interface ReplayJobData {
   replayId: string;
   filePath: string;
   userId: string;
+  subjectSteamId?: string;
 }
 
 export function isLocalDevMode(): boolean {
@@ -39,7 +40,11 @@ async function updateStatus(
 }
 
 /** Process a replay without Redis/BullMQ — used in LOCAL_DEV mode */
-export async function processReplayInline(replayId: string, filePath: string) {
+export async function processReplayInline(
+  replayId: string,
+  filePath: string,
+  subjectSteamId?: string
+) {
   try {
     await updateStatus(replayId, 'parsing', 5, 'Reading replay file...');
 
@@ -56,7 +61,7 @@ export async function processReplayInline(replayId: string, filePath: string) {
     }
 
     await updateStatus(replayId, 'parsing', 20, `Parsing with ${parser.name}...`);
-    const parsed = await parser.parse(buffer);
+    const parsed = await parser.parse(buffer, subjectSteamId);
 
     await prisma.replay.update({
       where: { id: replayId },
@@ -106,7 +111,7 @@ export async function processReplayInline(replayId: string, filePath: string) {
 export async function enqueueReplayProcessing(data: ReplayJobData): Promise<void> {
   if (isLocalDevMode()) {
     // Fire-and-forget inline processing — no Redis required
-    void processReplayInline(data.replayId, data.filePath);
+    void processReplayInline(data.replayId, data.filePath, data.subjectSteamId);
     return;
   }
 

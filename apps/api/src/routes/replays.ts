@@ -48,6 +48,11 @@ replayRouter.post('/upload', upload.single('replay'), async (req, res) => {
       return res.status(401).json({ success: false, error: 'Sign in to upload replays' });
     }
 
+    const subjectSteamId =
+      typeof req.body?.subjectSteamId === 'string' && req.body.subjectSteamId.trim()
+        ? req.body.subjectSteamId.trim()
+        : undefined;
+
     const replay = await prisma.replay.create({
       data: {
         userId: user.id,
@@ -63,6 +68,7 @@ replayRouter.post('/upload', upload.single('replay'), async (req, res) => {
       replayId: replay.id,
       filePath: req.file.path,
       userId: user.id,
+      subjectSteamId,
     });
 
     res.json({

@@ -26,7 +26,11 @@ export async function apiFetch<T>(
   return json.data as T;
 }
 
-export async function uploadReplay(file: File, onProgress?: (pct: number) => void) {
+export async function uploadReplay(
+  file: File,
+  onProgress?: (pct: number) => void,
+  options?: { subjectSteamId?: string }
+) {
   const authHeaders = await getAuthHeaders();
   if (!authHeaders['x-user-id']) {
     throw new Error('Sign in to upload replays');
@@ -34,6 +38,9 @@ export async function uploadReplay(file: File, onProgress?: (pct: number) => voi
 
   const formData = new FormData();
   formData.append('replay', file);
+  if (options?.subjectSteamId?.trim()) {
+    formData.append('subjectSteamId', options.subjectSteamId.trim());
+  }
 
   return new Promise<{ replayId: string; status: string }>((resolve, reject) => {
     const xhr = new XMLHttpRequest();

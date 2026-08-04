@@ -23,43 +23,56 @@ export function DeadlockReplayAnalysis(_props: GamePageProps) {
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [metadata, setMetadata] = useState<Record<string, string> | null>(null);
+  const [subjectSteamId, setSubjectSteamId] = useState('');
 
-  const handleFile = useCallback(async (file: File) => {
-    if (!file.name.endsWith('.dem')) {
-      setError('Only .dem replay files are supported');
-      setState('error');
-      return;
-    }
-    setError(null);
-    setState('uploading');
-    setProgress(0);
-    try {
-      const result = await uploadReplay(file, setProgress);
-      setReplayId(result.replayId);
-      setState('processing');
-      setProcessingProgress(0);
-      setProcessingMessage('Queued for analysis...');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed');
-      setState('error');
-    }
-  }, []);
+  const handleFile = useCallback(
+    async (file: File) => {
+      if (!file.name.endsWith('.dem')) {
+        setError('Only .dem replay files are supported');
+        setState('error');
+        return;
+      }
+      setError(null);
+      setState('uploading');
+      setProgress(0);
+      try {
+        const result = await uploadReplay(file, setProgress, {
+          subjectSteamId: subjectSteamId || undefined,
+        });
+        setReplayId(result.replayId);
+        setState('processing');
+        setProcessingProgress(0);
+        setProcessingMessage('Queued for analysis...');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Upload failed');
+        setState('error');
+      }
+    },
+    [subjectSteamId]
+  );
 
   useEffect(() => {
     if (state !== 'processing' || !replayId) return;
     const poll = setInterval(async () => {
       try {
-        const status = await apiFetch<{ stage: string; progress: number; message: string; error?: string }>(
-          `/api/replays/${replayId}/status`
-        );
+        const status = await apiFetch<{
+          stage: string;
+          progress: number;
+          message: string;
+          error?: string;
+        }>(`/api/replays/${replayId}/status`);
         setProcessingProgress(status.progress);
         setProcessingMessage(status.message ?? status.stage);
         if (status.stage === 'complete') {
           setState('complete');
           clearInterval(poll);
-          const replay = await apiFetch<{ hero?: string; map?: string; durationSeconds?: number; gameMode?: string; version?: string }>(
-            `/api/replays/${replayId}`
-          );
+          const replay = await apiFetch<{
+            hero?: string;
+            map?: string;
+            durationSeconds?: number;
+            gameMode?: string;
+            version?: string;
+          }>(`/api/replays/${replayId}`);
           setMetadata({
             Hero: replay.hero ?? 'Parsing...',
             Map: replay.map ?? 'Unknown',
@@ -75,17 +88,22 @@ export function DeadlockReplayAnalysis(_props: GamePageProps) {
           setState('error');
           clearInterval(poll);
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore transient poll errors */
+      }
     }, 2000);
     return () => clearInterval(poll);
   }, [state, replayId]);
 
-  const onDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFile(file);
-  }, [handleFile]);
+  const onDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragOver(false);
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    },
+    [handleFile]
+  );
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -98,26 +116,56 @@ export function DeadlockReplayAnalysis(_props: GamePageProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={onDrop}
-            className={cn(
-              'glass rounded-2xl p-12 text-center border-2 border-dashed transition-all cursor-pointer',
-              dragOver ? 'border-purple-500 glow-purple' : 'border-white/10 hover:border-purple-500/50'
-            )}
-            onClick={() => document.getElementById('dl-file-input')?.click()}
+            className="space-y-4"
           >
-            <Upload className="h-12 w-12 text-purple-400 mx-auto mb-4" />
-            <p className="text-white font-medium mb-2">Drop your .dem replay here</p>
-            <Button variant="glow">Select Replay File</Button>
-            <input id="dl-file-input" type="file" accept=".dem" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
+            <div className="glass rounded-2xl p-4">
+              <label className="block text-sm text-zinc-400 mb-2" htmlFor="subject-steam-id">
+                Your Steam ID (optional)
+              </label>
+              <input
+                id="subject-steam-id"
+                type="text"
+                value={subjectSteamId}
+                onChange={(e) => setSubjectSteamId(e.target.value)}
+                placeholder="SteamID64 or in-game name — defaults to first player"
+                className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:border-purple-500/50 focus:outline-none"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={onDrop}
+              className={cn(
+                'glass rounded-2xl p-12 text-center border-2 border-dashed transition-all cursor-pointer',
+                dragOver ? 'border-purple-500 glow-purple' : 'border-white/10 hover:border-purple-500/50'
+              )}
+              onClick={() => document.getElementById('dl-file-input')?.click()}
+            >
+              <Upload className="h-12 w-12 text-purple-400 mx-auto mb-4" />
+              <p className="text-white font-medium mb-2">Drop your .dem replay here</p>
+              <Button variant="glow">Select Replay File</Button>
+              <input
+                id="dl-file-input"
+                type="file"
+                accept=".dem"
+                className="hidden"
+                onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+              />
+            </div>
           </motion.div>
         )}
         {(state === 'uploading' || state === 'processing') && (
           <motion.div key="progress" className="glass rounded-2xl p-8">
             <Loader2 className="h-6 w-6 text-purple-400 animate-spin mb-4" />
             <div className="w-full bg-zinc-800 rounded-full h-2">
-              <div className="gradient-purple h-2 rounded-full transition-all" style={{ width: `${state === 'uploading' ? progress : processingProgress}%` }} />
+              <div
+                className="gradient-purple h-2 rounded-full transition-all"
+                style={{ width: `${state === 'uploading' ? progress : processingProgress}%` }}
+              />
             </div>
             <p className="text-sm text-zinc-400 mt-2">{processingMessage || 'Uploading...'}</p>
           </motion.div>
@@ -135,7 +183,11 @@ export function DeadlockReplayAnalysis(_props: GamePageProps) {
                 ))}
               </div>
             )}
-            <Button variant="glow" className="w-full" onClick={() => router.push(`${reportPath}/${replayId}/report`)}>
+            <Button
+              variant="glow"
+              className="w-full"
+              onClick={() => router.push(`${reportPath}/${replayId}/report`)}
+            >
               <FileVideo className="h-4 w-4 mr-2" /> View Coaching Report
             </Button>
           </motion.div>
@@ -144,7 +196,9 @@ export function DeadlockReplayAnalysis(_props: GamePageProps) {
           <motion.div key="error" className="glass rounded-2xl p-8 text-center">
             <AlertCircle className="h-10 w-10 text-red-400 mx-auto mb-4" />
             <p className="text-zinc-400 mb-6">{error}</p>
-            <Button variant="outline" onClick={() => setState('idle')}>Try Again</Button>
+            <Button variant="outline" onClick={() => setState('idle')}>
+              Try Again
+            </Button>
           </motion.div>
         )}
       </AnimatePresence>

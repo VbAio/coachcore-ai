@@ -114,6 +114,10 @@ export interface CoachingReport {
   skillScores: SkillScores;
   /** Sections marked as estimates when parser data was incomplete */
   estimatedSections: string[];
+  /** Parser confidence from replay extraction */
+  extractionConfidence?: 'full' | 'partial' | 'minimal';
+  /** Notes from the .dem parser (gaps, subject selection, fallbacks) */
+  parserNotes?: string[];
 }
 
 export interface ChatCoachMessage {

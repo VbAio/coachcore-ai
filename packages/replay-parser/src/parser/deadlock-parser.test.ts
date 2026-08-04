@@ -22,6 +22,22 @@ describe('DeadlockReplayParser', () => {
     const buffer = Buffer.alloc(50000);
     buffer.write('PBDEMS2', 0, 'ascii');
     const replay = await parser.parse(buffer);
-    expect(replay.parserNotes.some((n) => n.includes('estimate') || n.includes('parsing'))).toBe(true);
+    expect(
+      replay.parserNotes.some(
+        (n) =>
+          n.toLowerCase().includes('estimate') ||
+          n.toLowerCase().includes('parsing') ||
+          n.toLowerCase().includes('deadem') ||
+          n.toLowerCase().includes('scaffold')
+      )
+    ).toBe(true);
+  });
+
+  it('accepts subjectId for scaffold fallback', async () => {
+    const buffer = Buffer.alloc(50000);
+    buffer.write('PBDEMS2', 0, 'ascii');
+    const replay = await parser.parse(buffer, '76561198000000000');
+    expect(replay.subjectPlayerId).toBeTruthy();
+    expect(replay.metadata.players.some((p) => p.isSubject)).toBe(true);
   });
 });

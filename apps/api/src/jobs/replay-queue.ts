@@ -12,7 +12,11 @@ export function startBullWorker() {
   const worker = new Worker<ReplayJobData>(
     'replay-processing',
     async (job: Job<ReplayJobData>) => {
-      return processReplayInline(job.data.replayId, job.data.filePath);
+      return processReplayInline(
+        job.data.replayId,
+        job.data.filePath,
+        job.data.subjectSteamId
+      );
     },
     { connection, concurrency: 2 }
   );

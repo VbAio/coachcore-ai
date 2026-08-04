@@ -11,8 +11,8 @@ export interface ReplayParser {
   /** Returns true if this parser can handle the given file buffer/header */
   canParse(buffer: Buffer): boolean;
 
-  /** Parse a .dem file into structured replay data */
-  parse(buffer: Buffer, subjectPlayerName?: string): Promise<ParsedReplay>;
+  /** Parse a .dem file into structured replay data. subjectId may be Steam ID or player name. */
+  parse(buffer: Buffer, subjectId?: string): Promise<ParsedReplay>;
 
   /** Validate file without full parse */
   validate(buffer: Buffer): Promise<{ valid: boolean; errors: string[] }>;

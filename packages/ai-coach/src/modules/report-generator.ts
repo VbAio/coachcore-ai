@@ -78,6 +78,8 @@ export function generateReport(
     proComparison: buildProComparison(features),
     skillScores: scores,
     estimatedSections,
+    extractionConfidence: replay.extractionConfidence,
+    parserNotes: replay.parserNotes,
   };
 }
 
