@@ -59,14 +59,19 @@ export async function uploadReplay(
         return;
       }
       try {
-        const json = JSON.parse(xhr.responseText);
-        if (json.success) resolve(json.data);
+        const json = JSON.parse(xhr.responseText) as {
+          success?: boolean;
+          data?: { replayId: string; status: string };
+          error?: string;
+        };
+        if (json.success && json.data) resolve(json.data);
         else reject(new Error(json.error ?? `Upload failed (${xhr.status})`));
       } catch {
+        const snippet = (xhr.responseText || '').slice(0, 160).trim();
         reject(
           new Error(
-            xhr.status >= 500
-              ? `Upload failed: API error (${xhr.status})`
+            snippet
+              ? `Upload failed (${xhr.status}): ${snippet}`
               : `Upload failed: unexpected response from ${API_URL} (${xhr.status})`
           )
         );

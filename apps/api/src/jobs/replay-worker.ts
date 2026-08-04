@@ -116,8 +116,16 @@ export async function enqueueReplayProcessing(data: ReplayJobData): Promise<void
     return;
   }
 
-  const { replayQueue } = await import('./replay-queue.js');
-  await replayQueue.add('process-replay', data);
+  try {
+    const { getReplayQueue } = await import('./replay-queue.js');
+    await getReplayQueue().add('process-replay', data);
+  } catch (err) {
+    console.error(
+      '[replay] Queue enqueue failed — falling back to inline processing:',
+      err instanceof Error ? err.message : err
+    );
+    void processReplayInline(data.replayId, data.filePath, data.subjectSteamId);
+  }
 }
 
 export function startReplayWorker(): void {

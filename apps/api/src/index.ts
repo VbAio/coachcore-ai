@@ -7,7 +7,8 @@ import { coachRouter } from './routes/coach.js';
 import { leaderboardsRouter } from './routes/leaderboards.js';
 import { setupWebSocket } from './ws/replay-ws.js';
 import { startReplayWorker } from './jobs/replay-worker.js';
-import { getStorageProvider } from './lib/storage.js';
+import { getStorageProvider, getTempUploadDir } from './lib/storage.js';
+import fs from 'node:fs/promises';
 
 dotenv.config({ path: '../../.env' });
 dotenv.config();
@@ -15,6 +16,10 @@ dotenv.config();
 const app = express();
 /** Railway injects PORT; fall back to API_PORT / 4000 for local. */
 const port = Number(process.env.PORT || process.env.API_PORT) || 4000;
+
+void fs.mkdir(getTempUploadDir(), { recursive: true }).catch((err) => {
+  console.error('Failed to create upload temp dir:', err);
+});
 
 function parseCorsOrigins(): string | string[] | boolean {
   const raw = process.env.CORS_ORIGIN ?? 'http://localhost:3000';

@@ -1,12 +1,37 @@
-import { Queue, Worker, Job } from 'bullmq';
+import { Queue, Worker, Job, type ConnectionOptions } from 'bullmq';
 import IORedis from 'ioredis';
 import { processReplayInline, type ReplayJobData } from './replay-worker.js';
 
-const connection = new IORedis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
-  maxRetriesPerRequest: null,
-});
+let connection: IORedis | null = null;
+let replayQueue: Queue<ReplayJobData> | null = null;
 
-export const replayQueue = new Queue('replay-processing', { connection });
+function getRedisConnection(): IORedis {
+  if (connection) return connection;
+
+  const url = process.env.REDIS_URL;
+  if (!url) {
+    throw new Error('REDIS_URL is not set');
+  }
+
+  connection = new IORedis(url, {
+    maxRetriesPerRequest: null,
+    enableReadyCheck: false,
+  });
+
+  connection.on('error', (err) => {
+    console.error('[redis] connection error:', err.message);
+  });
+
+  return connection;
+}
+
+export function getReplayQueue(): Queue<ReplayJobData> {
+  if (replayQueue) return replayQueue;
+  replayQueue = new Queue<ReplayJobData>('replay-processing', {
+    connection: getRedisConnection() as ConnectionOptions,
+  });
+  return replayQueue;
+}
 
 export function startBullWorker() {
   const worker = new Worker<ReplayJobData>(
@@ -18,7 +43,10 @@ export function startBullWorker() {
         job.data.subjectSteamId
       );
     },
-    { connection, concurrency: 2 }
+    {
+      connection: getRedisConnection() as ConnectionOptions,
+      concurrency: 2,
+    }
   );
 
   worker.on('failed', (job, err) => {

@@ -1,4 +1,4 @@
-import { Router, type Request } from 'express';
+import { Router, type Request, type Response, type NextFunction } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
@@ -13,9 +13,11 @@ import {
 const tempDir = getTempUploadDir();
 
 const diskStorage = multer.diskStorage({
-  destination: async (_req, _file, cb) => {
-    await fs.mkdir(tempDir, { recursive: true });
-    cb(null, tempDir);
+  destination: (_req, _file, cb) => {
+    void fs
+      .mkdir(tempDir, { recursive: true })
+      .then(() => cb(null, tempDir))
+      .catch((err) => cb(err as Error, tempDir));
   },
   filename: (_req, file, cb) => {
     const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
@@ -43,7 +45,18 @@ async function resolveUser(req: Request) {
   return prisma.user.findUnique({ where: { id: userId } });
 }
 
-replayRouter.post('/upload', upload.single('replay'), async (req, res) => {
+function uploadMiddleware(req: Request, res: Response, next: NextFunction) {
+  upload.single('replay')(req, res, (err: unknown) => {
+    if (err) {
+      const message = err instanceof Error ? err.message : 'Upload failed';
+      const status = message.includes('File too large') || message.includes('limit') ? 413 : 400;
+      return res.status(status).json({ success: false, error: message });
+    }
+    next();
+  });
+}
+
+replayRouter.post('/upload', uploadMiddleware, async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'No file uploaded' });
@@ -86,6 +99,7 @@ replayRouter.post('/upload', upload.single('replay'), async (req, res) => {
       data: { replayId: replay.id, status: 'queued' },
     });
   } catch (error) {
+    console.error('[replays] upload error:', error);
     if (req.file?.path) {
       await fs.unlink(req.file.path).catch(() => undefined);
     }
