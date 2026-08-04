@@ -6,6 +6,7 @@ import { isUsernameAvailable, isEmailAvailable } from '@/lib/auth/user-service';
 import { generateToken, tokenExpiresHours } from '@/lib/auth/tokens';
 import { sendVerificationEmail } from '@/lib/auth/email';
 import { rateLimit, getClientIp } from '@/lib/auth/rate-limit';
+import { setUserSession } from '@/lib/auth/create-session';
 
 export const runtime = 'nodejs';
 
@@ -62,6 +63,16 @@ export async function POST(request: Request) {
 
     await sendVerificationEmail(normalizedEmail, token, username);
     await prisma.userStats.create({ data: { userId: user.id } });
+
+    await setUserSession({
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      role: user.role,
+      emailVerified: user.emailVerified,
+      displayName: user.displayName,
+      avatar: user.avatar,
+    });
 
     return NextResponse.json({
       success: true,

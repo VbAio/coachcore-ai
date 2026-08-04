@@ -8,7 +8,7 @@ import { UserMenu } from '@/components/auth/user-menu';
 /** Platform marketing navbar — no game-specific nav items */
 export function PlatformNavbar() {
   return (
-    <nav className="fixed top-0 z-50 w-full glass border-b border-white/5">
+    <nav className="fixed top-[var(--verify-banner-height)] z-50 w-full glass border-b border-white/5">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
         <Link href="/" className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-lg gradient-purple flex items-center justify-center text-sm font-bold">

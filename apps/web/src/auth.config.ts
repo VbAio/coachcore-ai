@@ -1,6 +1,7 @@
 import type { NextAuthConfig } from 'next-auth';
 import Google from 'next-auth/providers/google';
 import Discord from 'next-auth/providers/discord';
+import { getDiscordOAuthConfig, getGoogleOAuthConfig } from '@/lib/auth/oauth';
 
 const MAX_AGE = 30 * 24 * 60 * 60;
 const SESSION_UPDATE_AGE = 24 * 60 * 60;
@@ -36,20 +37,18 @@ declare module '@auth/core/jwt' {
 
 export const authConfig = {
   providers: [
-    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+    ...(getGoogleOAuthConfig()
       ? [
           Google({
-            clientId: process.env.GOOGLE_CLIENT_ID,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            ...getGoogleOAuthConfig()!,
             allowDangerousEmailAccountLinking: false,
           }),
         ]
       : []),
-    ...(process.env.DISCORD_CLIENT_ID && process.env.DISCORD_CLIENT_SECRET
+    ...(getDiscordOAuthConfig()
       ? [
           Discord({
-            clientId: process.env.DISCORD_CLIENT_ID,
-            clientSecret: process.env.DISCORD_CLIENT_SECRET,
+            ...getDiscordOAuthConfig()!,
             allowDangerousEmailAccountLinking: false,
             authorization: { params: { scope: 'identify email' } },
           }),

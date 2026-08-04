@@ -1,8 +1,9 @@
 'use client';
 
-import { signIn } from 'next-auth/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getProviders } from 'next-auth/react';
 import { cn } from '@/lib/utils';
+import { FormAlert } from '@/components/auth/form-fields';
 
 function GoogleIcon() {
   return (
@@ -35,39 +36,80 @@ function DiscordIcon() {
   );
 }
 
-export function OAuthButtons({ callbackUrl = '/dashboard' }: { callbackUrl?: string }) {
-  const [loading, setLoading] = useState<string | null>(null);
+type OAuthProvider = 'google' | 'discord';
 
-  async function handleOAuth(provider: 'google' | 'discord') {
+function oauthSignInUrl(provider: OAuthProvider, redirectTo: string) {
+  const params = new URLSearchParams({ callbackUrl: redirectTo });
+  return `/api/auth/signin/${provider}?${params.toString()}`;
+}
+
+export function OAuthButtons({
+  callbackUrl = '/dashboard',
+  redirectTo,
+}: {
+  callbackUrl?: string;
+  redirectTo?: string;
+}) {
+  const destination = redirectTo ?? callbackUrl;
+  const [loading, setLoading] = useState<OAuthProvider | null>(null);
+  const [available, setAvailable] = useState<Record<OAuthProvider, boolean>>({
+    google: false,
+    discord: false,
+  });
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getProviders().then((providers) => {
+      setAvailable({
+        google: !!providers?.google,
+        discord: !!providers?.discord,
+      });
+    });
+  }, []);
+
+  function startOAuth(provider: OAuthProvider) {
+    if (!available[provider]) {
+      setError(
+        provider === 'google'
+          ? 'Google sign-in is not configured yet. Add AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET to your environment.'
+          : 'Discord sign-in is not configured yet. Add AUTH_DISCORD_ID and AUTH_DISCORD_SECRET to your environment.'
+      );
+      return;
+    }
+
+    setError('');
     setLoading(provider);
-    await signIn(provider, { callbackUrl });
+    window.location.href = oauthSignInUrl(provider, destination);
   }
 
   return (
     <div className="space-y-3">
+      {error && <FormAlert type="error" message={error} />}
+
       <button
         type="button"
         disabled={!!loading}
-        onClick={() => handleOAuth('google')}
+        onClick={() => startOAuth('google')}
         className={cn(
           'flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] py-3 text-sm font-medium text-white transition-all hover:border-white/20 hover:bg-white/[0.06]',
           loading === 'google' && 'opacity-60'
         )}
       >
         <GoogleIcon />
-        Continue with Google
+        {loading === 'google' ? 'Redirecting to Google…' : 'Continue with Google'}
       </button>
+
       <button
         type="button"
         disabled={!!loading}
-        onClick={() => handleOAuth('discord')}
+        onClick={() => startOAuth('discord')}
         className={cn(
           'flex w-full items-center justify-center gap-3 rounded-xl border border-[#5865F2]/30 bg-[#5865F2]/10 py-3 text-sm font-medium text-white transition-all hover:bg-[#5865F2]/20',
           loading === 'discord' && 'opacity-60'
         )}
       >
         <DiscordIcon />
-        Continue with Discord
+        {loading === 'discord' ? 'Redirecting to Discord…' : 'Continue with Discord'}
       </button>
     </div>
   );
@@ -84,4 +126,9 @@ export function AuthDivider() {
       </div>
     </div>
   );
+}
+
+/** Settings page helper — connect an OAuth account to the current user. */
+export function connectOAuth(provider: OAuthProvider, redirectTo: string) {
+  window.location.href = oauthSignInUrl(provider, redirectTo);
 }

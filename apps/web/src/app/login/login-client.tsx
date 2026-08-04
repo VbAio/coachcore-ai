@@ -25,7 +25,13 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(
-    errorParam === 'CredentialsSignin' ? 'Invalid email or password' : ''
+    errorParam === 'CredentialsSignin'
+      ? 'Invalid email or password'
+      : errorParam === 'Configuration'
+        ? 'Social sign-in is not configured. Contact support or use email/password.'
+        : errorParam
+          ? 'Sign-in failed. Please try again.'
+          : ''
   );
 
   async function handleSubmit(e: React.FormEvent) {

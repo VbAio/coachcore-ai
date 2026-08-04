@@ -7,7 +7,7 @@ import { Upload, Sparkles, Target, TrendingUp } from 'lucide-react';
 
 export function HeroSection() {
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-[calc(4rem+var(--verify-banner-height))]">
       <div className="absolute inset-0">
         <div className="absolute top-1/4 left-1/4 h-96 w-96 rounded-full bg-purple-600/20 blur-3xl animate-pulse-glow" />
         <div className="absolute bottom-1/4 right-1/4 h-96 w-96 rounded-full bg-indigo-600/20 blur-3xl animate-pulse-glow" style={{ animationDelay: '1.5s' }} />

@@ -47,21 +47,43 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    const ip = getClientIp(request.headers);
     const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const body = await request.json().catch(() => ({}));
+    const bodyEmail =
+      typeof body.email === 'string' ? body.email.toLowerCase().trim() : null;
+
+    let user =
+      session?.user?.id
+        ? await prisma.user.findUnique({ where: { id: session.user.id } })
+        : null;
+
+    if (!user && session?.user?.email) {
+      user = await prisma.user.findUnique({
+        where: { email: session.user.email.toLowerCase() },
+      });
     }
 
-    const ip = getClientIp(request.headers);
-    const limit = rateLimit(`resend:${session.user.id}:${ip}`, 3, 60 * 60 * 1000);
+    if (!user && bodyEmail) {
+      user = await prisma.user.findUnique({ where: { email: bodyEmail } });
+    }
+
+    if (!user) {
+      if (!session?.user && !bodyEmail) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'If an unverified account exists for that email, a verification link was sent.',
+      });
+    }
+
+    const limit = rateLimit(`resend:${user.id}:${ip}`, 3, 60 * 60 * 1000);
     if (!limit.allowed) {
       return NextResponse.json({ error: 'Too many resend attempts' }, { status: 429 });
     }
 
-    const user = await prisma.user.findUnique({ where: { id: session.user.id } });
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
     if (user.emailVerified) {
       return NextResponse.json({ error: 'Email already verified' }, { status: 400 });
     }

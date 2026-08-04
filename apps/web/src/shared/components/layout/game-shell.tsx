@@ -20,8 +20,8 @@ export function GameShell({
 
   return (
     <GameContextProvider gameId={gameId}>
-      <div className="min-h-screen bg-black pt-16">
-        <header className="fixed top-0 z-40 w-full glass border-b border-white/5 h-16 flex items-center px-4 lg:px-6">
+      <div className="min-h-screen bg-black pt-[calc(4rem+var(--verify-banner-height))]">
+        <header className="fixed top-[var(--verify-banner-height)] z-40 w-full glass border-b border-white/5 h-16 flex items-center px-4 lg:px-6">
           <Link href="/" className="flex items-center gap-2 mr-6 shrink-0">
             <div className="h-8 w-8 rounded-lg gradient-purple flex items-center justify-center text-sm font-bold">
               CC

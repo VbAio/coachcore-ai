@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { AuthLayout } from '@/components/auth/auth-layout';
-import { SubmitButton, FormAlert } from '@/components/auth/form-fields';
+import { SubmitButton, FormAlert, FormField, TextInput } from '@/components/auth/form-fields';
 import { Mail, CheckCircle2 } from 'lucide-react';
 
 function VerifyEmailContent() {
@@ -19,6 +19,9 @@ function VerifyEmailContent() {
   const [resending, setResending] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
+  const [emailInput, setEmailInput] = useState('');
+
+  const resendEmail = session?.user?.email ?? emailInput.trim();
 
   useEffect(() => {
     if (!token) return;
@@ -53,9 +56,20 @@ function VerifyEmailContent() {
   }, [token, router, update]);
 
   async function resend() {
+    if (!resendEmail) {
+      setMessage('Enter your email address to resend the verification link.');
+      setStatus('error');
+      return;
+    }
+
     setResending(true);
     try {
-      const res = await fetch('/api/auth/verify-email', { method: 'PUT' });
+      const res = await fetch('/api/auth/verify-email', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: resendEmail }),
+      });
       const data = await res.json();
       setMessage(res.ok ? data.message : data.error);
       setStatus(res.ok ? 'success' : 'error');
@@ -98,6 +112,19 @@ function VerifyEmailContent() {
           <p className="mt-2 text-sm text-zinc-500">Sent to {session.user.email}</p>
         )}
       </div>
+
+      {!session?.user?.email && (
+        <FormField label="Email">
+          <TextInput
+            type="email"
+            value={emailInput}
+            onChange={(e) => setEmailInput(e.target.value)}
+            placeholder="you@example.com"
+            required
+            autoComplete="email"
+          />
+        </FormField>
+      )}
 
       {message && (
         <FormAlert type={status === 'error' ? 'error' : 'success'} message={message} />

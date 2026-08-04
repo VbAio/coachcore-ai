@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { AuthLayout } from '@/components/auth/auth-layout';
 import { OAuthButtons, AuthDivider } from '@/components/auth/oauth-buttons';
 import { PasswordStrength } from '@/components/auth/password-strength';
@@ -15,7 +14,6 @@ import {
 } from '@/components/auth/form-fields';
 
 export default function SignupPage() {
-  const router = useRouter();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -34,6 +32,7 @@ export default function SignupPage() {
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           username,
           email,
@@ -50,7 +49,7 @@ export default function SignupPage() {
         return;
       }
 
-      router.push('/verify-email?registered=1');
+      window.location.href = '/deadlock?registered=1';
     } catch {
       setError('Something went wrong. Please try again.');
     } finally {

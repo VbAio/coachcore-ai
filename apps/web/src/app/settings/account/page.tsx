@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSession, signIn } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
+import { connectOAuth } from '@/components/auth/oauth-buttons';
 import { PlatformNavbar } from '@/shared/components/layout/platform-navbar';
 import {
   FormField,
@@ -244,14 +245,14 @@ export default function AccountSettingsPage() {
             <ProviderRow
               name="Google"
               connected={authMethods?.hasGoogle}
-              onConnect={() => signIn('google', { callbackUrl: '/settings/account' })}
+              onConnect={() => connectOAuth('google', '/settings/account')}
               onDisconnect={() => disconnectProvider('google')}
               canDisconnect={(authMethods?.count ?? 0) > 1}
             />
             <ProviderRow
               name="Discord"
               connected={authMethods?.hasDiscord}
-              onConnect={() => signIn('discord', { callbackUrl: '/settings/account' })}
+              onConnect={() => connectOAuth('discord', '/settings/account')}
               onDisconnect={() => disconnectProvider('discord')}
               canDisconnect={(authMethods?.count ?? 0) > 1}
             />
