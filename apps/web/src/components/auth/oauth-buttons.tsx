@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getProviders } from 'next-auth/react';
+import { getProviders, signIn } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 import { FormAlert } from '@/components/auth/form-fields';
 
@@ -38,11 +38,6 @@ function DiscordIcon() {
 
 type OAuthProvider = 'google' | 'discord';
 
-function oauthSignInUrl(provider: OAuthProvider, redirectTo: string) {
-  const params = new URLSearchParams({ callbackUrl: redirectTo });
-  return `/api/auth/signin/${provider}?${params.toString()}`;
-}
-
 export function OAuthButtons({
   callbackUrl = '/dashboard',
   redirectTo,
@@ -67,19 +62,25 @@ export function OAuthButtons({
     });
   }, []);
 
-  function startOAuth(provider: OAuthProvider) {
+  async function startOAuth(provider: OAuthProvider) {
     if (!available[provider]) {
       setError(
         provider === 'google'
-          ? 'Google sign-in is not configured yet. Add AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET to your environment.'
-          : 'Discord sign-in is not configured yet. Add AUTH_DISCORD_ID and AUTH_DISCORD_SECRET to your environment.'
+          ? 'Google sign-in is not configured yet. Add AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET in Vercel, then redeploy.'
+          : 'Discord sign-in is not configured yet. Add AUTH_DISCORD_ID and AUTH_DISCORD_SECRET in Vercel, then redeploy.'
       );
       return;
     }
 
     setError('');
     setLoading(provider);
-    window.location.href = oauthSignInUrl(provider, destination);
+
+    try {
+      await signIn(provider, { redirectTo: destination, redirect: true });
+    } catch {
+      setError('Could not start sign-in. Please try again.');
+      setLoading(null);
+    }
   }
 
   return (
@@ -130,5 +131,5 @@ export function AuthDivider() {
 
 /** Settings page helper — connect an OAuth account to the current user. */
 export function connectOAuth(provider: OAuthProvider, redirectTo: string) {
-  window.location.href = oauthSignInUrl(provider, redirectTo);
+  void signIn(provider, { redirectTo, redirect: true });
 }
