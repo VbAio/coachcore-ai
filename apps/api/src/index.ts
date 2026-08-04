@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import http from 'http';
 import dotenv from 'dotenv';
-import { replayRouter } from './routes/replays.js';
+import { getMaxReplaySizeMb, replayRouter } from './routes/replays.js';
 import { coachRouter } from './routes/coach.js';
 import { leaderboardsRouter } from './routes/leaderboards.js';
 import { setupWebSocket } from './ws/replay-ws.js';
@@ -47,6 +47,7 @@ app.get('/health', (_req, res) => {
     service: 'coachcore-api',
     storage: getStorageProvider(),
     localDev: process.env.LOCAL_DEV === 'true',
+    maxReplaySizeMb: getMaxReplaySizeMb(),
   });
 });
 

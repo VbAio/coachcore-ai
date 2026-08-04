@@ -40,7 +40,7 @@ Browser (any device)
 | `CORS_ORIGIN` | `https://coachcore-ai-web.vercel.app` (comma-separate more origins if needed) |
 | `AI_COACH_PROVIDER` | `openai` or `mock` |
 | `OPENAI_API_KEY` | Optional |
-| `MAX_REPLAY_SIZE_MB` | `500` (raise carefully; Railway request limits apply) |
+| `MAX_REPLAY_SIZE_MB` | `1500` (Deadlock `.dem` files are often large; raise if needed) |
 
 5. Confirm `GET https://<railway-host>/health` returns `"status":"ok"`.
 6. Copy the public API URL (e.g. `https://coachcore-api-production.up.railway.app`).

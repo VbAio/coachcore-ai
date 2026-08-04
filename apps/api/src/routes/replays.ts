@@ -12,6 +12,16 @@ import {
 
 const tempDir = getTempUploadDir();
 
+/** Deadlock .dem files are often 200–800+ MB; keep a high default. */
+export function getMaxReplaySizeMb(): number {
+  const parsed = Number(process.env.MAX_REPLAY_SIZE_MB);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1500;
+}
+
+function getMaxReplayBytes(): number {
+  return Math.floor(getMaxReplaySizeMb() * 1024 * 1024);
+}
+
 const diskStorage = multer.diskStorage({
   destination: (_req, _file, cb) => {
     void fs
@@ -27,7 +37,7 @@ const diskStorage = multer.diskStorage({
 
 const upload = multer({
   storage: diskStorage,
-  limits: { fileSize: (Number(process.env.MAX_REPLAY_SIZE_MB) || 500) * 1024 * 1024 },
+  limits: { fileSize: getMaxReplayBytes() },
   fileFilter: (_req, file, cb) => {
     if (path.extname(file.originalname).toLowerCase() === '.dem') {
       cb(null, true);
@@ -48,9 +58,20 @@ async function resolveUser(req: Request) {
 function uploadMiddleware(req: Request, res: Response, next: NextFunction) {
   upload.single('replay')(req, res, (err: unknown) => {
     if (err) {
-      const message = err instanceof Error ? err.message : 'Upload failed';
-      const status = message.includes('File too large') || message.includes('limit') ? 413 : 400;
-      return res.status(status).json({ success: false, error: message });
+      const raw = err instanceof Error ? err.message : 'Upload failed';
+      const isTooLarge =
+        raw === 'File too large' ||
+        (typeof err === 'object' &&
+          err !== null &&
+          'code' in err &&
+          (err as { code?: string }).code === 'LIMIT_FILE_SIZE');
+      if (isTooLarge) {
+        return res.status(413).json({
+          success: false,
+          error: `File too large — max ${getMaxReplaySizeMb()} MB. Set MAX_REPLAY_SIZE_MB on the API if you need more.`,
+        });
+      }
+      return res.status(400).json({ success: false, error: raw });
     }
     next();
   });
