@@ -73,10 +73,14 @@ app.use('/api/leaderboards', leaderboardsRouter);
 const server = http.createServer(app);
 setupWebSocket(server);
 
-startReplayWorker();
-
+// Listen first so Railway healthchecks succeed even if the worker is misconfigured.
 server.listen(port, '0.0.0.0', () => {
   console.log(`CoachCore API running on http://0.0.0.0:${port}`);
   console.log(`Storage provider: ${getStorageProvider()}`);
   console.log(`LOCAL_DEV: ${process.env.LOCAL_DEV === 'true'}`);
+  try {
+    startReplayWorker();
+  } catch (err) {
+    console.error('Replay worker failed to start:', err);
+  }
 });

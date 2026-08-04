@@ -127,12 +127,19 @@ export function startReplayWorker(): void {
   }
 
   if (!process.env.REDIS_URL) {
-    console.error('REDIS_URL is required when LOCAL_DEV is not true');
-    throw new Error('REDIS_URL is required when LOCAL_DEV is not true');
+    // Do not crash the HTTP server — healthchecks must still pass.
+    console.error(
+      'REDIS_URL is missing while LOCAL_DEV!=true. Replay queue disabled until REDIS_URL is set.'
+    );
+    return;
   }
 
-  void import('./replay-queue.js').then(({ startBullWorker }) => {
-    startBullWorker();
-    console.log('Replay worker started (BullMQ)');
-  });
+  void import('./replay-queue.js')
+    .then(({ startBullWorker }) => {
+      startBullWorker();
+      console.log('Replay worker started (BullMQ)');
+    })
+    .catch((err) => {
+      console.error('Failed to start replay worker:', err);
+    });
 }
