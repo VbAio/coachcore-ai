@@ -1,16 +1,24 @@
 import NextAuth from 'next-auth';
-import { PrismaAdapter } from '@auth/prisma-adapter';
 import Credentials from 'next-auth/providers/credentials';
 import { authConfig } from '@/auth.config';
 import { prisma } from '@/lib/db';
+import { coachCoreAdapter } from '@/lib/auth/prisma-adapter';
 import { generateUniqueUsername } from '@/lib/auth/user-service';
 import { generateToken, tokenExpiresDays } from '@/lib/auth/tokens';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
-  adapter: PrismaAdapter(prisma),
+  adapter: coachCoreAdapter(prisma),
   secret: process.env.AUTH_SECRET,
   debug: process.env.AUTH_DEBUG === 'true',
+  logger: {
+    error(error) {
+      console.error('[auth][error]', error);
+    },
+    warn(code) {
+      console.warn('[auth][warn]', code);
+    },
+  },
   providers: [
     ...authConfig.providers,
     Credentials({
@@ -138,10 +146,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async signIn({ user, account }) {
       if (user.id && account?.provider !== 'credentials') {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { lastLogin: new Date() },
-        });
+        try {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { lastLogin: new Date() },
+          });
+        } catch (err) {
+          console.error('[auth signIn event]', err);
+        }
       }
     },
   },

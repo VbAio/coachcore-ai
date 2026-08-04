@@ -3,7 +3,11 @@ export function getAuthErrorMessage(error?: string | null): string {
     case 'CredentialsSignin':
       return 'Invalid email or password.';
     case 'Configuration':
-      return 'Sign-in failed during the OAuth callback. If credentials are configured, try again — stale errors are cleared on refresh. Check Vercel function logs if it keeps happening.';
+      return 'Sign-in failed while saving your account after Google/Discord redirected back. Try again in a private window. If it persists, use email/password or check Vercel logs for [auth][error].';
+    case 'OAuthCallbackError':
+      return 'Google/Discord returned an invalid response. Confirm the redirect URI in Google/Discord matches https://coachcore-ai-web.vercel.app/api/auth/callback/google (or discord).';
+    case 'AdapterError':
+      return 'Could not save your social login to the database. Try email/password sign-in, or retry after a minute.';
     case 'OAuthAccountNotLinked':
       return 'An account with this email already exists. Sign in with email/password first, then connect Google or Discord in Settings.';
     case 'OAuthCallback':
