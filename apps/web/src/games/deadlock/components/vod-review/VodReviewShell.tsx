@@ -161,15 +161,19 @@ export function VodReviewShell({ data }: Props) {
         </div>
       </header>
 
-      {(confidence === 'minimal' || (report.parserNotes?.length ?? 0) > 0) && (
+      {(confidence !== 'full' || (report.parserNotes?.length ?? 0) > 0) && (
         <div className="flex gap-2 rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-xs text-amber-200/90">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <div>
-            {confidence === 'minimal' && (
-              <p className="font-medium">Limited parse data — coaching may be incomplete.</p>
-            )}
+            <p className="font-medium">
+              {confidence === 'full'
+                ? 'Parser notes'
+                : confidence === 'partial'
+                  ? 'Partial parse — kills, items, and coaching still work; some map/farm data may be missing.'
+                  : 'Limited parse data — coaching may be incomplete.'}
+            </p>
             <ul className="mt-0.5 space-y-0.5 text-amber-200/70">
-              {(report.parserNotes ?? timeline?.parserNotes ?? []).slice(0, 4).map((n, i) => (
+              {(report.parserNotes ?? timeline?.parserNotes ?? []).slice(0, 5).map((n, i) => (
                 <li key={i}>{n}</li>
               ))}
             </ul>

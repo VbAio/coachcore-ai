@@ -2,6 +2,7 @@ import { Readable } from 'node:stream';
 import type {
   AbilityUpgrade,
   CombatEvent,
+  EconomySnapshot,
   ItemPurchase,
   ParsedReplay,
   PositionSample,
@@ -48,6 +49,106 @@ function tryField(entity: { getField: (k: string) => unknown }, ...keys: string[
     }
   }
   return undefined;
+}
+
+function asFiniteNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  // Some parsers wrap primitives
+  if (value && typeof value === 'object') {
+    const o = value as { value?: unknown; x?: unknown };
+    if (typeof o.value === 'number') return o.value;
+  }
+  return undefined;
+}
+
+/**
+ * Deadlock pawn origins live on CBodyComponent.m_skeletonInstance.m_vecOrigin.*
+ * (not m_vecAbsOrigin). Fall back to older/alternate field layouts.
+ */
+function readPawnOrigin(pawn: {
+  getField: (k: string) => unknown;
+}): { x: number; y: number; z: number } | null {
+  const pathSets: Array<[string, string, string]> = [
+    [
+      'CBodyComponent.m_skeletonInstance.m_vecOrigin.m_vecX',
+      'CBodyComponent.m_skeletonInstance.m_vecOrigin.m_vecY',
+      'CBodyComponent.m_skeletonInstance.m_vecOrigin.m_vecZ',
+    ],
+    [
+      'm_CBodyComponent.m_skeletonInstance.m_vecOrigin.m_vecX',
+      'm_CBodyComponent.m_skeletonInstance.m_vecOrigin.m_vecY',
+      'm_CBodyComponent.m_skeletonInstance.m_vecOrigin.m_vecZ',
+    ],
+    [
+      'CBodyComponent.m_sceneNode.m_vecOrigin.m_vecX',
+      'CBodyComponent.m_sceneNode.m_vecOrigin.m_vecY',
+      'CBodyComponent.m_sceneNode.m_vecOrigin.m_vecZ',
+    ],
+  ];
+
+  for (const [xk, yk, zk] of pathSets) {
+    const x = asFiniteNumber(tryField(pawn, xk));
+    const y = asFiniteNumber(tryField(pawn, yk));
+    const z = asFiniteNumber(tryField(pawn, zk)) ?? 0;
+    if (x != null && y != null) return { x, y, z };
+  }
+
+  const packed = tryField(
+    pawn,
+    'm_vecAbsOrigin',
+    'm_vOrigin',
+    'CBodyComponent.m_vecOrigin',
+    'CBodyComponent.m_skeletonInstance.m_vecOrigin'
+  );
+  if (packed && typeof packed === 'object') {
+    const o = packed as { x?: unknown; y?: unknown; z?: unknown; m_vecX?: unknown; m_vecY?: unknown; m_vecZ?: unknown };
+    const x = asFiniteNumber(o.x ?? o.m_vecX);
+    const y = asFiniteNumber(o.y ?? o.m_vecY);
+    const z = asFiniteNumber(o.z ?? o.m_vecZ) ?? 0;
+    if (x != null && y != null) return { x, y, z };
+  }
+
+  // Cell + local offset (Source 2 style)
+  const cellX = asFiniteNumber(tryField(pawn, 'CBodyComponent.m_cellX', 'm_CBodyComponent.m_cellX'));
+  const cellY = asFiniteNumber(tryField(pawn, 'CBodyComponent.m_cellY', 'm_CBodyComponent.m_cellY'));
+  const cellZ = asFiniteNumber(tryField(pawn, 'CBodyComponent.m_cellZ', 'm_CBodyComponent.m_cellZ'));
+  const vecX = asFiniteNumber(
+    tryField(pawn, 'CBodyComponent.m_vecX', 'm_CBodyComponent.m_vecX', 'CBodyComponent.m_vecOrigin.m_vecX')
+  );
+  const vecY = asFiniteNumber(
+    tryField(pawn, 'CBodyComponent.m_vecY', 'm_CBodyComponent.m_vecY', 'CBodyComponent.m_vecOrigin.m_vecY')
+  );
+  const vecZ = asFiniteNumber(
+    tryField(pawn, 'CBodyComponent.m_vecZ', 'm_CBodyComponent.m_vecZ', 'CBodyComponent.m_vecOrigin.m_vecZ')
+  );
+  if (cellX != null && cellY != null && vecX != null && vecY != null) {
+    const CELL = 128; // Source 2 cell size used by many Citadel builds
+    return {
+      x: cellX * CELL + vecX,
+      y: cellY * CELL + vecY,
+      z: (cellZ ?? 0) * CELL + (vecZ ?? 0),
+    };
+  }
+
+  return null;
+}
+
+function readPawnSouls(pawn: { getField: (k: string) => unknown }): number | undefined {
+  return (
+    asFiniteNumber(
+      tryField(
+        pawn,
+        'm_nCurrencies.m_nCurrencies',
+        'm_nCurrencies',
+        'm_iGold',
+        'm_nGold'
+      )
+    ) ?? undefined
+  );
 }
 
 function teamLabel(teamNum: number): ReplayPlayer['team'] {
@@ -166,6 +267,7 @@ export async function extractWithDeadem(
   const parserNotes: string[] = [];
   const events: CombatEvent[] = [];
   const positions: PositionSample[] = [];
+  const economy: EconomySnapshot[] = [];
   const abilityUpgrades: AbilityUpgrade[] = [];
   const itemPurchases: ItemPurchase[] = [];
   const playersByKey = new Map<string, PlayerSlot>();
@@ -180,6 +282,7 @@ export async function extractWithDeadem(
   let lastDemoTick = 0;
   let tickInterval = 1 / 64;
   let positionSampleCounter = 0;
+  let subjectSteamHint: string | undefined = subjectId;
 
   const ensurePlayer = (key: string, partial: Partial<PlayerSlot> & { name?: string }) => {
     const existing = playersByKey.get(key);
@@ -318,18 +421,14 @@ export async function extractWithDeadem(
       }
     }
 
-    // Downsample positions ~every 2s; denser for subject when known
+    // Downsample positions ~every 1s of demo packets
     positionSampleCounter++;
-    if (positionSampleCounter % 128 === 0) {
+    if (positionSampleCounter % 64 === 0) {
       const pawns = demo.getEntitiesByClassName('CCitadelPlayerPawn');
       const ts = formatClockSeconds(gameClock);
       for (const pawn of pawns.slice(0, 12)) {
-        const origin =
-          tryField(pawn, 'm_vecAbsOrigin', 'm_vOrigin', 'CBodyComponent.m_vecOrigin') ??
-          tryField(pawn, 'm_CBodyComponent.m_cellX');
-        if (!origin || typeof origin !== 'object') continue;
-        const o = origin as { x?: number; y?: number; z?: number };
-        if (typeof o.x !== 'number' || typeof o.y !== 'number') continue;
+        const origin = readPawnOrigin(pawn);
+        if (!origin) continue;
 
         let playerId = pawnToPlayer.get(pawn.index);
         if (!playerId) {
@@ -344,14 +443,39 @@ export async function extractWithDeadem(
 
         positions.push({
           timestamp: ts,
-          x: o.x,
-          y: o.y,
-          z: typeof o.z === 'number' ? o.z : 0,
+          x: origin.x,
+          y: origin.y,
+          z: origin.z,
           playerId,
         });
+
+        // Sample souls for the subject when the field is present
+        const souls = readPawnSouls(pawn);
+        if (
+          souls != null &&
+          playerId &&
+          (playerId === subjectSteamHint ||
+            playerId === `steam:${subjectSteamHint}` ||
+            (!subjectSteamHint && economy.length === 0))
+        ) {
+          const last = economy[economy.length - 1];
+          if (!last || last.timestamp !== ts) {
+            economy.push({
+              timestamp: ts,
+              gold: souls,
+              netWorth: souls,
+              lastHits: 0,
+              denies: 0,
+            });
+          } else {
+            last.gold = souls;
+            last.netWorth = souls;
+          }
+        }
       }
       // Cap memory
       if (positions.length > 6000) positions.splice(0, positions.length - 6000);
+      if (economy.length > 2000) economy.splice(0, economy.length - 2000);
     }
   });
 
@@ -597,9 +721,6 @@ export async function extractWithDeadem(
   if (events.filter((e) => e.type === 'kill').length === 0) {
     parserNotes.push('No kill events extracted — combat timeline may be incomplete');
   }
-  if (positions.length === 0) {
-    parserNotes.push('Position samples unavailable from this demo');
-  }
   if (steamByName.size === 0) {
     parserNotes.push('Steam IDs were not available in USER_INFO; using name-based IDs');
   }
@@ -643,6 +764,12 @@ export async function extractWithDeadem(
   const subjectSteam = subject.steamId;
   const filteredPositions = downsamplePositions(positions, subjectSteam);
 
+  if (filteredPositions.length === 0) {
+    parserNotes.push(
+      'Map positions unavailable — demo did not expose pawn origin fields (map scrubber limited)'
+    );
+  }
+
   // Backfill event positions that were missing at kill time
   for (const e of events) {
     if (e.position) continue;
@@ -665,9 +792,15 @@ export async function extractWithDeadem(
         : 'minimal';
 
   if (extractionConfidence !== 'full') {
-    parserNotes.push(`Extraction confidence: ${extractionConfidence}`);
+    parserNotes.push(
+      `Extraction confidence: ${extractionConfidence} (combat OK${
+        filteredPositions.length === 0 ? '; map positions missing' : ''
+      }${economy.length === 0 ? '; souls sparse/unavailable' : ''})`
+    );
   }
-  parserNotes.push('Economy/souls not extracted from demo — economy coaching omitted');
+  if (economy.length === 0) {
+    parserNotes.push('Souls/net-worth timeline unavailable — farm efficiency coaching omitted');
+  }
 
   return {
     metadata: {
@@ -682,7 +815,7 @@ export async function extractWithDeadem(
     positions: filteredPositions,
     events,
     teamFights,
-    economy: [],
+    economy,
     abilityUpgrades,
     itemPurchases,
     extractionConfidence,

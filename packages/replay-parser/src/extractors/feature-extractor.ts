@@ -66,11 +66,22 @@ export function extractFeatures(replay: ParsedReplay): ExtractedFeatures {
         ? Math.min(1, (killTimestamps.length + assistCount) / Math.max(1, deathTimestamps.length + killTimestamps.length))
         : 0;
 
+  const lastEconomy = replay.economy[replay.economy.length - 1];
   const netWorthProxy =
-    (subject?.kills ?? 0) * 300 + (subject?.assists ?? 0) * 150 + objectiveEvents.length * 200;
+    lastEconomy != null
+      ? lastEconomy.netWorth
+      : (subject?.kills ?? 0) * 300 +
+        (subject?.assists ?? 0) * 150 +
+        objectiveEvents.length * 200;
 
   return {
-    gpm: subject ? Math.round(Math.max(netWorthProxy, (subject.kills * 200 + 300)) / durationMin) : 0,
+    gpm: subject
+      ? Math.round(
+          (lastEconomy != null
+            ? lastEconomy.netWorth
+            : Math.max(netWorthProxy, subject.kills * 200 + 300)) / durationMin
+        )
+      : 0,
     xpm: Math.round(
       ((subject?.kills ?? 0) * 80 + (subject?.assists ?? 0) * 40 + 300) / durationMin
     ),
