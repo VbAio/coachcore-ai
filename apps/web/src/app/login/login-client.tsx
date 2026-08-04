@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -26,6 +26,17 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(getAuthErrorMessage(errorParam));
+
+  useEffect(() => {
+    if (!errorParam) return;
+
+    const params = new URLSearchParams();
+    if (callbackUrl !== '/dashboard') {
+      params.set('callbackUrl', callbackUrl);
+    }
+    const nextUrl = params.size ? `/login?${params.toString()}` : '/login';
+    router.replace(nextUrl);
+  }, [callbackUrl, errorParam, router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

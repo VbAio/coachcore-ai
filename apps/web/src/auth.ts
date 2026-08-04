@@ -10,6 +10,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(prisma),
   secret: process.env.AUTH_SECRET,
+  debug: process.env.AUTH_DEBUG === 'true',
   providers: [
     ...authConfig.providers,
     Credentials({
@@ -28,15 +29,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     ...authConfig.callbacks,
     async jwt({ token, user, trigger, session }) {
       if (user?.id) {
-        const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
-        if (dbUser) {
-          token.id = dbUser.id;
-          token.username = dbUser.username;
-          token.role = dbUser.role;
-          token.emailVerified = dbUser.emailVerified;
-          token.name = dbUser.displayName ?? dbUser.name;
-          token.picture = dbUser.avatar ?? dbUser.image;
-        } else {
+        try {
+          const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+          if (dbUser) {
+            token.id = dbUser.id;
+            token.username = dbUser.username;
+            token.role = dbUser.role;
+            token.emailVerified = dbUser.emailVerified;
+            token.name = dbUser.displayName ?? dbUser.name;
+            token.picture = dbUser.avatar ?? dbUser.image;
+          } else {
+            token.id = user.id;
+            token.username = user.username ?? '';
+            token.role = user.role ?? 'user';
+            token.emailVerified = user.emailVerified ?? null;
+            token.name = user.name;
+            token.picture = user.image;
+          }
+        } catch (err) {
+          console.error('[auth jwt callback]', err);
           token.id = user.id;
           token.username = user.username ?? '';
           token.role = user.role ?? 'user';
@@ -81,28 +92,48 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   events: {
     async createUser({ user }) {
+      if (!user.id) return;
+
       try {
+        const existing = await prisma.user.findUnique({
+          where: { id: user.id },
+          include: { stats: true },
+        });
+        if (!existing) return;
+
+        if (existing.stats) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              avatar: user.image ?? existing.avatar,
+              name: user.name ?? existing.name,
+              image: user.image ?? existing.image,
+              displayName: user.name ?? existing.displayName,
+            },
+          });
+          return;
+        }
+
         const base = user.name ?? user.email?.split('@')[0] ?? 'player';
         const username = await generateUniqueUsername(base);
+
         await prisma.user.update({
-          where: { id: user.id! },
+          where: { id: user.id },
           data: {
             username,
-            displayName: user.name ?? username,
-            avatar: user.image ?? null,
-            name: user.name ?? null,
-            image: user.image ?? null,
-            emailVerified: user.emailVerified ?? null,
+            displayName: user.name ?? existing.displayName ?? username,
+            avatar: user.image ?? existing.avatar,
+            name: user.name ?? existing.name,
+            image: user.image ?? existing.image,
+            emailVerified: user.emailVerified ?? existing.emailVerified,
           },
         });
-        await prisma.userStats.upsert({
-          where: { userId: user.id! },
-          create: { userId: user.id! },
-          update: {},
-        });
+
+        if (!existing.stats) {
+          await prisma.userStats.create({ data: { userId: user.id } });
+        }
       } catch (err) {
         console.error('[auth createUser event]', err);
-        throw err;
       }
     },
     async signIn({ user, account }) {

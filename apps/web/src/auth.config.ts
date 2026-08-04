@@ -57,7 +57,7 @@ export const authConfig = {
   ],
   pages: {
     signIn: '/login',
-    newUser: '/signup',
+    newUser: '/deadlock',
     error: '/login',
   },
   session: {

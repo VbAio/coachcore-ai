@@ -3,7 +3,7 @@ export function getAuthErrorMessage(error?: string | null): string {
     case 'CredentialsSignin':
       return 'Invalid email or password.';
     case 'Configuration':
-      return 'Social sign-in is not configured on the server. Add AUTH_GOOGLE_ID, AUTH_GOOGLE_SECRET, AUTH_DISCORD_ID, and AUTH_DISCORD_SECRET in Vercel, then redeploy.';
+      return 'Sign-in failed during the OAuth callback. If credentials are configured, try again — stale errors are cleared on refresh. Check Vercel function logs if it keeps happening.';
     case 'OAuthAccountNotLinked':
       return 'An account with this email already exists. Sign in with email/password first, then connect Google or Discord in Settings.';
     case 'OAuthCallback':
