@@ -12,18 +12,42 @@ import {
 
 describe('storage local provider', () => {
   const prevProvider = process.env.STORAGE_PROVIDER;
+  const prevBucket = process.env.S3_BUCKET;
+  const prevKey = process.env.AWS_ACCESS_KEY_ID;
+  const prevSecret = process.env.AWS_SECRET_ACCESS_KEY;
 
   beforeAll(() => {
     process.env.STORAGE_PROVIDER = 'local';
+    delete process.env.S3_BUCKET;
+    delete process.env.AWS_ACCESS_KEY_ID;
+    delete process.env.AWS_SECRET_ACCESS_KEY;
   });
 
   afterAll(() => {
     if (prevProvider === undefined) delete process.env.STORAGE_PROVIDER;
     else process.env.STORAGE_PROVIDER = prevProvider;
+    if (prevBucket === undefined) delete process.env.S3_BUCKET;
+    else process.env.S3_BUCKET = prevBucket;
+    if (prevKey === undefined) delete process.env.AWS_ACCESS_KEY_ID;
+    else process.env.AWS_ACCESS_KEY_ID = prevKey;
+    if (prevSecret === undefined) delete process.env.AWS_SECRET_ACCESS_KEY;
+    else process.env.AWS_SECRET_ACCESS_KEY = prevSecret;
   });
 
-  it('defaults to local provider', () => {
+  it('uses local when STORAGE_PROVIDER=local', () => {
     expect(getStorageProvider()).toBe('local');
+  });
+
+  it('auto-selects s3 when credentials exist and provider unset', () => {
+    delete process.env.STORAGE_PROVIDER;
+    process.env.S3_BUCKET = 'coachcore-replays';
+    process.env.AWS_ACCESS_KEY_ID = 'key';
+    process.env.AWS_SECRET_ACCESS_KEY = 'secret';
+    expect(getStorageProvider()).toBe('s3');
+    process.env.STORAGE_PROVIDER = 'local';
+    delete process.env.S3_BUCKET;
+    delete process.env.AWS_ACCESS_KEY_ID;
+    delete process.env.AWS_SECRET_ACCESS_KEY;
   });
 
   it('stores and loads a replay under uploads/', async () => {

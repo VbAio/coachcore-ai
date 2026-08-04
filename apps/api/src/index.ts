@@ -7,7 +7,7 @@ import { coachRouter } from './routes/coach.js';
 import { leaderboardsRouter } from './routes/leaderboards.js';
 import { setupWebSocket } from './ws/replay-ws.js';
 import { startReplayWorker } from './jobs/replay-worker.js';
-import { getStorageProvider, getTempUploadDir } from './lib/storage.js';
+import { getStorageProvider, getStorageWarning, getTempUploadDir } from './lib/storage.js';
 import fs from 'node:fs/promises';
 
 dotenv.config({ path: '../../.env' });
@@ -20,6 +20,11 @@ const port = Number(process.env.PORT || process.env.API_PORT) || 4000;
 void fs.mkdir(getTempUploadDir(), { recursive: true }).catch((err) => {
   console.error('Failed to create upload temp dir:', err);
 });
+
+const storageWarning = getStorageWarning();
+if (storageWarning) {
+  console.error(`[storage] ${storageWarning}`);
+}
 
 function parseCorsOrigins(): string | string[] | boolean {
   const raw = process.env.CORS_ORIGIN ?? 'http://localhost:3000';
@@ -42,12 +47,14 @@ app.use(
 app.use(express.json({ limit: '2mb' }));
 
 app.get('/health', (_req, res) => {
+  const warning = getStorageWarning();
   res.json({
     status: 'ok',
     service: 'coachcore-api',
     storage: getStorageProvider(),
     localDev: process.env.LOCAL_DEV === 'true',
     maxReplaySizeMb: getMaxReplaySizeMb(),
+    ...(warning ? { storageWarning: warning } : {}),
   });
 });
 
