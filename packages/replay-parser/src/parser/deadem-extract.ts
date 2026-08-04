@@ -310,24 +310,35 @@ export async function extractWithDeadem(
     getEntity: (i: number) => { getField: (k: string) => unknown } | null;
     server: { tickInterval?: number } | null;
   }) => {
-    if (gameRulesIndex == null) return;
-    const rules = demo.getEntity(gameRulesIndex);
-    if (!rules) return;
-    const clockLast = Number(
-      tryField(rules, 'm_pGameRules.m_flMatchClockAtLastUpdate') ?? 0
-    );
-    const clockTick = Number(
-      tryField(rules, 'm_pGameRules.m_nMatchClockUpdateTick') ?? 0
-    );
-    const paused = Boolean(tryField(rules, 'm_pGameRules.m_bGamePaused'));
     const interval = demo.server?.tickInterval ?? tickInterval;
-    if (paused) {
-      gameClock = Math.max(clockLast, 0);
-    } else {
-      const delta = Math.max(lastDemoTick - clockTick, 0);
-      gameClock = Math.max(clockLast + delta * interval, 0);
+    tickInterval = interval;
+    const demoElapsed = Math.max(0, lastDemoTick * interval);
+
+    if (gameRulesIndex != null) {
+      const rules = demo.getEntity(gameRulesIndex);
+      if (rules) {
+        const clockLast = Number(
+          tryField(rules, 'm_pGameRules.m_flMatchClockAtLastUpdate') ?? 0
+        );
+        const clockTick = Number(
+          tryField(rules, 'm_pGameRules.m_nMatchClockUpdateTick') ?? 0
+        );
+        const paused = Boolean(tryField(rules, 'm_pGameRules.m_bGamePaused'));
+        if (paused) {
+          gameClock = Math.max(clockLast, 0);
+        } else {
+          const delta = Math.max(lastDemoTick - clockTick, 0);
+          gameClock = Math.max(clockLast + delta * interval, 0);
+        }
+      }
     }
-    durationSeconds = Math.max(durationSeconds, gameClock, lastDemoTick * interval);
+
+    // If match clock never advances (rules missing / wrong fields), use demo time
+    // so position samples are spaced across the match instead of all at t=0.
+    if (gameClock < 0.5 && demoElapsed > gameClock) {
+      gameClock = demoElapsed;
+    }
+    durationSeconds = Math.max(durationSeconds, gameClock, demoElapsed);
   };
 
   const config = new ParserConfiguration({

@@ -36,8 +36,8 @@ export function VodReviewShell({ data }: Props) {
     }));
   }, [timeline, report.buildReview]);
 
-  const [t, setT] = useState(rows[0]?.timestamp ?? 0);
-  const [playing, setPlaying] = useState(false);
+  const [t, setT] = useState(0);
+  const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(1);
   const [filter, setFilter] = useState<TimelineFilter>('all');
   const [selectedId, setSelectedId] = useState<string | null>(
@@ -68,21 +68,27 @@ export function VodReviewShell({ data }: Props) {
     if (!playing) return;
     let frame = 0;
     let last = performance.now();
+    let stopped = false;
     const tick = (now: number) => {
+      if (stopped) return;
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       setT((prev) => {
         const next = prev + dt * speedRef.current;
         if (next >= durationRef.current) {
-          setPlaying(false);
+          stopped = true;
+          queueMicrotask(() => setPlaying(false));
           return durationRef.current;
         }
         return next;
       });
-      frame = requestAnimationFrame(tick);
+      if (!stopped) frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      stopped = true;
+      cancelAnimationFrame(frame);
+    };
   }, [playing]);
 
   useEffect(() => {
@@ -206,6 +212,7 @@ export function VodReviewShell({ data }: Props) {
             t={t}
             highlightPlayerIds={highlightPlayerIds}
             marker={marker}
+            playing={playing}
           />
           <PlaybackControls
             t={t}
