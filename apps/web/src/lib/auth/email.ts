@@ -1,8 +1,10 @@
 import { Resend } from 'resend';
 
+import { getConfiguredAppUrl } from '@/lib/auth/app-url';
+
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const fromEmail = process.env.EMAIL_FROM ?? 'CoachCore AI <noreply@coachcore.ai>';
-const appUrl = process.env.AUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+const appUrl = getConfiguredAppUrl();
 
 async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
   if (!resend) {
