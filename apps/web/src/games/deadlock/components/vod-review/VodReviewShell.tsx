@@ -63,19 +63,26 @@ export function VodReviewShell({ data }: Props) {
   const highlightPlayerIds = selected?.involvedPlayerIds ?? insight?.involvedPlayerIds ?? [];
   const marker = selected?.position ?? insight?.position ?? null;
 
+  // Smooth RAF playback (~60fps) instead of coarse 250ms ticks
   useEffect(() => {
     if (!playing) return;
-    const id = window.setInterval(() => {
+    let frame = 0;
+    let last = performance.now();
+    const tick = (now: number) => {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
       setT((prev) => {
-        const next = prev + 0.25 * speedRef.current;
+        const next = prev + dt * speedRef.current;
         if (next >= durationRef.current) {
           setPlaying(false);
           return durationRef.current;
         }
         return next;
       });
-    }, 250);
-    return () => window.clearInterval(id);
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
   }, [playing]);
 
   useEffect(() => {
