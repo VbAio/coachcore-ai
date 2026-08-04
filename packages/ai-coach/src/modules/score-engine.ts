@@ -6,7 +6,9 @@ export function computeSkillScores(
   features: ExtractedFeatures,
   mistakes: DetectedMistake[]
 ): SkillScores {
-  const majorCount = mistakes.filter((m) => m.severity === 'major' || m.severity === 'game_losing').length;
+  const majorCount = mistakes.filter((m) =>
+    ['major', 'game_losing', 'critical', 'high'].includes(m.severity)
+  ).length;
   const penalty = majorCount * 8 + mistakes.length * 2;
 
   const clamp = (n: number) => Math.max(20, Math.min(95, n));

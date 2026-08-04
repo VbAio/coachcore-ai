@@ -32,6 +32,10 @@ export function generateReport(
       'timeline'
     );
   }
+  // Souls/economy not extracted yet — never present fake economy coaching as fact
+  if (replay.economy.length === 0) {
+    estimatedSections.push('economyAnalysis');
+  }
 
   const laneMistakes = mistakes.filter((m) =>
     ['awareness', 'positioning', 'economy'].includes(m.category) && m.timestamp < replay.metadata.durationSeconds * 0.25
@@ -70,7 +74,10 @@ export function generateReport(
     microAnalysis: microMistakes,
     teamFightAnalysis: buildTeamFightBreakdowns(replay, mistakes),
     heatmaps: generateHeatmaps(replay, features),
-    economyAnalysis: mistakes.filter((m) => m.category === 'economy'),
+    economyAnalysis:
+      replay.economy.length === 0
+        ? []
+        : mistakes.filter((m) => m.category === 'economy'),
     heroSpecificCoaching: buildHeroCoaching(replay, mistakes),
     timeline: generateTimeline(mistakes),
     mistakesByCategory: grouped,
@@ -121,20 +128,31 @@ function buildTeamFightBreakdowns(
 
 function buildHeroCoaching(replay: ParsedReplay, mistakes: DetectedMistake[]) {
   const hero = replay.metadata.players.find((p) => p.isSubject)?.hero ?? 'your hero';
+  const eventBacked = mistakes.filter((m) => !m.isEstimate && (m.relatedEventIds?.length ?? 0) > 0);
+  const topMistake = eventBacked.find((m) => m.polarity === 'mistake');
+  const topPlay = eventBacked.find((m) => m.polarity === 'excellent');
+
   return [
     {
-      timestamp: 0,
-      title: `${hero} — common mistakes`,
-      whatHappened: `Players on ${hero} often overcommit after landing key abilities.`,
-      whyItHappened: 'Ability hit confirmation bias — assuming kill without checking escape tools.',
-      whyBadOrGood: 'Forces unfavorable trades when enemy defensive cooldowns are available.',
-      alternativePlay: 'Chunk, observe reaction, commit only if escape is burned.',
-      expectedOutcome: 'Higher trade win rate in extended laning.',
-      howToImprove: 'Track enemy defensive cooldowns on a notepad for 5 games.',
-      drills: [`${hero} combo trainer — 10 min daily`],
-      category: 'ability_usage' as const,
+      timestamp: topMistake?.timestamp ?? 0,
+      title: 'Coach summary',
+      whatHappened: topMistake
+        ? `Primary focus: ${topMistake.title} at the matched timestamp — ${topMistake.whatHappened}`
+        : `Parsed ${replay.events.length} combat events on ${hero}. Scrub the timeline for deaths and fights.`,
+      whyItHappened: topMistake?.whyItHappened ?? 'See event-backed moments on the timeline.',
+      whyBadOrGood: topPlay
+        ? `Keep doing: ${topPlay.title} — ${topPlay.whyBadOrGood}`
+        : 'Convert winning skirmishes into objectives within 15 seconds.',
+      alternativePlay: topMistake?.alternativePlay ?? 'Use the VOD scrubber to review each death.',
+      expectedOutcome: topMistake?.expectedOutcome ?? 'Clearer decision quality next match.',
+      howToImprove: topMistake?.howToImprove ?? 'Review every death timestamp before queueing again.',
+      drills: topMistake?.drills?.slice(0, 3) ?? [`${hero} VOD: pause on every death`],
+      category: 'decision_making' as const,
       severity: 'medium' as const,
-      isEstimate: true,
+      isEstimate: !topMistake,
+      relatedEventIds: topMistake?.relatedEventIds,
+      confidence: topMistake?.confidence ?? 40,
+      polarity: 'neutral' as const,
     },
     ...mistakes.filter((m) => m.category === 'itemization'),
   ];

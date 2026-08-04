@@ -137,6 +137,8 @@ model Replay {
   version         String?
   metadata        Json?
   parserNotes     Json?
+  /** Compact MatchTimeline for VOD scrubber (events + position tracks) */
+  timeline        Json?
   errorMessage    String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

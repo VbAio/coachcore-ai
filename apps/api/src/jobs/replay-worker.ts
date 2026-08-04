@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma.js';
 import { getParserForFile } from '@coachcore/replay-parser';
 import { runCoachingPipeline } from '@coachcore/ai-coach';
+import { buildMatchTimeline } from '@coachcore/shared';
 import { broadcastReplayStatus } from '../ws/replay-ws.js';
 import { getReplayBuffer } from '../lib/storage.js';
 
@@ -64,6 +65,8 @@ export async function processReplayInline(
     await updateStatus(replayId, 'parsing', 20, `Parsing with ${parser.name}...`);
     const parsed = await parser.parse(buffer, subjectSteamId);
 
+    const matchTimeline = buildMatchTimeline(parsed, replayId);
+
     await prisma.replay.update({
       where: { id: replayId },
       data: {
@@ -74,6 +77,7 @@ export async function processReplayInline(
         version: parsed.metadata.version,
         metadata: parsed.metadata as object,
         parserNotes: parsed.parserNotes,
+        timeline: matchTimeline as object,
       },
     });
 

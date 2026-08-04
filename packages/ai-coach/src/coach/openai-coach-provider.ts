@@ -75,14 +75,27 @@ export class OpenAICoachProvider implements CoachProvider {
           abilityCastCount: features.abilityCastCount,
           isEstimate: features.isEstimate,
         },
-        topMistakes: mistakes.slice(0, 8).map((m, index) => ({
+        topMistakes: mistakes.slice(0, 12).map((m, index) => ({
           index,
           timestamp: m.timestamp,
           title: m.title,
           category: m.category,
           severity: m.severity,
           whatHappened: m.whatHappened,
+          relatedEventIds: m.relatedEventIds,
+          involvedPlayerIds: m.involvedPlayerIds,
+          confidence: m.confidence,
+          polarity: m.polarity,
           isEstimate: m.isEstimate,
+        })),
+        recentEvents: replay.events.slice(0, 40).map((e) => ({
+          eventId: e.eventId,
+          t: e.timestamp,
+          type: e.type,
+          actorId: e.actorId,
+          targetId: e.targetId,
+          ability: e.ability,
+          item: e.item,
         })),
         parserNotes: replay.parserNotes.slice(0, 8),
         grades: {
@@ -103,8 +116,12 @@ export class OpenAICoachProvider implements CoachProvider {
           messages: [
             {
               role: 'system',
-              content: `You are an expert Deadlock esports coach. Enhance a structured coaching report.
-Never invent fake timestamps. Use the provided mistake indexes.
+              content: `You are an expert Deadlock coach writing a Chess.com/LoL-style VOD review.
+Rules:
+- Never invent timestamps or events. Only reference provided mistake indexes and eventIds.
+- Never say vague phrases like "play safer" or "play better".
+- Every rewrite must keep the original timestamp and cite evidence from whatHappened / relatedEventIds.
+- Do not invent souls, enemy cooldowns, or MMR unless marked estimate.
 Return ONLY JSON matching:
 {
   "currentPerformance": string,
@@ -128,8 +145,7 @@ Return ONLY JSON matching:
     "practiceDrills": string[],
     "goalForNextMatch": string
   }
-}
-Explain what happened, why, what to do instead, and drills. Do not just list stats.`,
+}`,
             },
             {
               role: 'user',

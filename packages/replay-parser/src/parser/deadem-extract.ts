@@ -89,6 +89,71 @@ function formatClockSeconds(seconds: number): number {
   return Math.max(0, Math.round(seconds));
 }
 
+/** Common Deadlock hero IDs → display names (fallback: hero_{id}) */
+const HERO_DISPLAY: Record<string, string> = {
+  '1': 'Infernus',
+  '2': 'Seven',
+  '3': 'Vindicta',
+  '4': 'Lady Geist',
+  '6': 'Abrams',
+  '7': 'Wraith',
+  '8': 'McGinnis',
+  '10': 'Paradox',
+  '11': 'Dynamo',
+  '12': 'Kelvin',
+  '13': 'Haze',
+  '14': 'Holliday',
+  '15': 'Bebop',
+  '16': 'Calico',
+  '17': 'Grey Talon',
+  '18': 'Mo & Krill',
+  '19': 'Shiv',
+  '20': 'Ivy',
+  '25': 'Warden',
+  '27': 'Yamato',
+  '31': 'Lash',
+  '35': 'Viscous',
+  '48': 'Pocket',
+  '50': 'Mirage',
+  '52': 'Dummy',
+  '58': 'Vyper',
+  '60': 'Sinclair',
+};
+
+function resolveHeroLabel(heroId: unknown): string {
+  if (heroId == null || heroId === 0 || heroId === '0') return 'unknown_hero';
+  const id = String(heroId);
+  return HERO_DISPLAY[id] ?? `hero_${id}`;
+}
+
+function nearestPosition(
+  samples: PositionSample[],
+  playerId: string | undefined,
+  timestamp: number
+): { x: number; y: number; z: number } | undefined {
+  const pool = playerId
+    ? samples.filter((s) => s.playerId === playerId)
+    : samples;
+  if (pool.length === 0) return undefined;
+  let best = pool[0];
+  let bestDist = Math.abs(best.timestamp - timestamp);
+  for (let i = 1; i < pool.length; i++) {
+    const d = Math.abs(pool[i].timestamp - timestamp);
+    if (d < bestDist) {
+      best = pool[i];
+      bestDist = d;
+    }
+  }
+  if (bestDist > 30) return undefined;
+  return { x: best.x, y: best.y, z: best.z };
+}
+
+let eventSeq = 0;
+function nextEventId(type: string, ts: number): string {
+  eventSeq += 1;
+  return `evt-${eventSeq}-${type}-${ts}`;
+}
+
 /**
  * Parse a Deadlock .dem buffer with deadem into CoachCore ParsedReplay.
  */
@@ -96,6 +161,7 @@ export async function extractWithDeadem(
   buffer: Buffer,
   subjectId?: string
 ): Promise<ParsedReplay> {
+  eventSeq = 0;
   const parserNotes: string[] = [];
   const events: CombatEvent[] = [];
   const positions: PositionSample[] = [];
@@ -103,6 +169,8 @@ export async function extractWithDeadem(
   const itemPurchases: ItemPurchase[] = [];
   const playersByKey = new Map<string, PlayerSlot>();
   const steamByName = new Map<string, string>();
+  /** pawn entity index → player steamId/key */
+  const pawnToPlayer = new Map<number, string>();
 
   let mapName = 'unknown_map';
   let durationSeconds = 0;
@@ -225,12 +293,11 @@ export async function extractWithDeadem(
         'm_iHeroID',
         'm_pData.m_nHeroID'
       );
-      const hero =
-        heroId != null && heroId !== 0 ? `hero_${heroId}` : 'unknown_hero';
+      const hero = resolveHeroLabel(heroId);
       const damage = Number(tryField(controller, 'm_iHeroDamage') ?? 0);
       const steamFromTable = steamByName.get(name);
       const key = steamFromTable ? `steam:${steamFromTable}` : `name:${name}`;
-      ensurePlayer(key, {
+      const player = ensurePlayer(key, {
         name,
         team,
         hero,
@@ -238,12 +305,23 @@ export async function extractWithDeadem(
         steamId: steamFromTable ?? `name:${name}`,
         controllerIndex: controller.index,
       });
+
+      // Map pawn → player for position tagging
+      const pawnHandle = tryField(controller, 'm_hPawn', 'm_hPlayerPawn');
+      if (pawnHandle != null) {
+        const pawn = demo.getEntityByHandle(pawnHandle);
+        if (pawn) {
+          player.pawnIndex = pawn.index;
+          pawnToPlayer.set(pawn.index, player.steamId);
+        }
+      }
     }
 
-    // Downsample subject positions roughly every ~2s of demo time
+    // Downsample positions ~every 2s; denser for subject when known
     positionSampleCounter++;
     if (positionSampleCounter % 128 === 0) {
       const pawns = demo.getEntitiesByClassName('CCitadelPlayerPawn');
+      const ts = formatClockSeconds(gameClock);
       for (const pawn of pawns.slice(0, 12)) {
         const origin =
           tryField(pawn, 'm_vecAbsOrigin', 'm_vOrigin', 'CBodyComponent.m_vecOrigin') ??
@@ -251,15 +329,28 @@ export async function extractWithDeadem(
         if (!origin || typeof origin !== 'object') continue;
         const o = origin as { x?: number; y?: number; z?: number };
         if (typeof o.x !== 'number' || typeof o.y !== 'number') continue;
+
+        let playerId = pawnToPlayer.get(pawn.index);
+        if (!playerId) {
+          const ctrl = resolveControllerFromPawn(demo, pawn.index);
+          const pname = ctrl ? String(tryField(ctrl, 'm_iszPlayerName') ?? '') : '';
+          if (pname) {
+            const steam = steamByName.get(pname);
+            playerId = steam ?? `name:${pname}`;
+            pawnToPlayer.set(pawn.index, playerId);
+          }
+        }
+
         positions.push({
-          timestamp: formatClockSeconds(gameClock),
+          timestamp: ts,
           x: o.x,
           y: o.y,
           z: typeof o.z === 'number' ? o.z : 0,
+          playerId,
         });
       }
       // Cap memory
-      if (positions.length > 4000) positions.splice(0, positions.length - 4000);
+      if (positions.length > 6000) positions.splice(0, positions.length - 6000);
     }
   });
 
@@ -357,17 +448,24 @@ export async function extractWithDeadem(
         killer.kills += 1;
         victim.deaths += 1;
 
+        const deathPos = nearestPosition(positions, victim.steamId, ts);
+        const killPos = deathPos ?? nearestPosition(positions, killer.steamId, ts);
+
         events.push({
+          eventId: nextEventId('kill', ts),
           timestamp: ts,
           type: 'kill',
           actorId: killer.steamId,
           targetId: victim.steamId,
+          position: killPos,
         });
         events.push({
+          eventId: nextEventId('death', ts),
           timestamp: ts,
           type: 'death',
           actorId: killer.steamId,
           targetId: victim.steamId,
+          position: deathPos,
         });
 
         for (const assistIdx of data.entindexAssisters ?? []) {
@@ -382,10 +480,12 @@ export async function extractWithDeadem(
           });
           assister.assists += 1;
           events.push({
+            eventId: nextEventId('assist', ts),
             timestamp: ts,
             type: 'assist',
             actorId: assister.steamId,
             targetId: victim.steamId,
+            position: deathPos,
           });
         }
         return;
@@ -405,10 +505,12 @@ export async function extractWithDeadem(
           }
         }
         events.push({
+          eventId: nextEventId('ability_cast', ts),
           timestamp: ts,
           type: 'ability_cast',
           actorId,
           ability: abilityName,
+          position: nearestPosition(positions, actorId, ts),
         });
         abilityUpgrades.push({
           timestamp: ts,
@@ -424,6 +526,7 @@ export async function extractWithDeadem(
         );
         itemPurchases.push({ timestamp: ts, item, cost: 0 });
         events.push({
+          eventId: nextEventId('item_purchase', ts),
           timestamp: ts,
           type: 'item_purchase',
           item,
@@ -434,6 +537,7 @@ export async function extractWithDeadem(
 
       if (messagePacket.type === MessagePacketType.CITADEL_USER_MESSAGE_BOSS_KILLED) {
         events.push({
+          eventId: nextEventId('objective', ts),
           timestamp: ts,
           type: 'objective',
           value: Number(messagePacket.data.objectiveTeam ?? 0),
@@ -443,6 +547,7 @@ export async function extractWithDeadem(
 
       if (messagePacket.type === MessagePacketType.CITADEL_USER_MESSAGE_MID_BOSS_SPAWNED) {
         events.push({
+          eventId: nextEventId('objective', ts),
           timestamp: ts,
           type: 'objective',
           ability: 'mid_boss_spawn',
@@ -504,12 +609,25 @@ export async function extractWithDeadem(
     p.isSubject = p.steamId === subject.steamId;
   }
 
-  const teamFights = detectTeamFights(events);
+  // Prefer denser subject track: keep all subject samples; downsample others ~1/2
+  const subjectSteam = subject.steamId;
+  const filteredPositions = downsamplePositions(positions, subjectSteam);
+
+  // Backfill event positions that were missing at kill time
+  for (const e of events) {
+    if (e.position) continue;
+    const focus =
+      e.type === 'death' || e.type === 'assist' ? e.targetId : e.actorId ?? e.targetId;
+    e.position = nearestPosition(filteredPositions, focus, e.timestamp);
+  }
+
+  const teamFights = detectTeamFights(events, players, subjectSteam);
   const killCount = events.filter((e) => e.type === 'kill').length;
   const hasRoster = players.length >= 2;
+  const taggedPositions = filteredPositions.filter((p) => p.playerId).length;
   const extractionConfidence: ParsedReplay['extractionConfidence'] =
     hasRoster && killCount > 0
-      ? positions.length > 0
+      ? filteredPositions.length > 0 && taggedPositions > 0
         ? 'full'
         : 'partial'
       : hasRoster
@@ -519,6 +637,7 @@ export async function extractWithDeadem(
   if (extractionConfidence !== 'full') {
     parserNotes.push(`Extraction confidence: ${extractionConfidence}`);
   }
+  parserNotes.push('Economy/souls not extracted from demo — economy coaching omitted');
 
   return {
     metadata: {
@@ -530,7 +649,7 @@ export async function extractWithDeadem(
       players,
     },
     subjectPlayerId: subject.steamId,
-    positions,
+    positions: filteredPositions,
     events,
     teamFights,
     economy: [],
@@ -541,40 +660,74 @@ export async function extractWithDeadem(
   };
 }
 
-function detectTeamFights(events: CombatEvent[]): TeamFight[] {
+function downsamplePositions(
+  samples: PositionSample[],
+  subjectId: string
+): PositionSample[] {
+  const subject: PositionSample[] = [];
+  const others: PositionSample[] = [];
+  for (const s of samples) {
+    if (s.playerId === subjectId) subject.push(s);
+    else others.push(s);
+  }
+  const thinnedOthers = others.filter((_, i) => i % 2 === 0);
+  return [...subject, ...thinnedOthers]
+    .sort((a, b) => a.timestamp - b.timestamp)
+    .slice(-6000);
+}
+
+function detectTeamFights(
+  events: CombatEvent[],
+  players: ReplayPlayer[],
+  subjectId: string
+): TeamFight[] {
   const fights: TeamFight[] = [];
   const killEvents = events.filter((e) => e.type === 'kill');
   if (killEvents.length < 2) return fights;
 
+  const teamOf = (id?: string) => players.find((p) => p.steamId === id)?.team;
+  const subjectTeam = teamOf(subjectId);
+
   let clusterStart = killEvents[0].timestamp;
-  let clusterKills = 1;
+  let cluster: CombatEvent[] = [killEvents[0]];
   const participants = new Set<string>();
   if (killEvents[0].actorId) participants.add(killEvents[0].actorId);
   if (killEvents[0].targetId) participants.add(killEvents[0].targetId);
 
   const flush = (endTime: number) => {
-    if (clusterKills >= 2) {
-      fights.push({
-        id: `fight-${fights.length}`,
-        startTime: clusterStart,
-        endTime,
-        participants: [...participants],
-        kills: clusterKills,
-        outcome: 'draw',
-      });
+    if (cluster.length < 2) return;
+    let subjectKills = 0;
+    let enemyKills = 0;
+    for (const k of cluster) {
+      const killerTeam = teamOf(k.actorId);
+      if (!subjectTeam || !killerTeam) continue;
+      if (killerTeam === subjectTeam) subjectKills++;
+      else enemyKills++;
     }
+    let outcome: TeamFight['outcome'] = 'draw';
+    if (subjectKills > enemyKills) outcome = 'won';
+    else if (enemyKills > subjectKills) outcome = 'lost';
+
+    fights.push({
+      id: `fight-${fights.length}`,
+      startTime: clusterStart,
+      endTime,
+      participants: [...participants],
+      kills: cluster.length,
+      outcome,
+    });
   };
 
   for (let i = 1; i < killEvents.length; i++) {
     const gap = killEvents[i].timestamp - killEvents[i - 1].timestamp;
     if (gap <= 15) {
-      clusterKills++;
+      cluster.push(killEvents[i]);
       if (killEvents[i].actorId) participants.add(killEvents[i].actorId!);
       if (killEvents[i].targetId) participants.add(killEvents[i].targetId!);
     } else {
       flush(killEvents[i - 1].timestamp);
       clusterStart = killEvents[i].timestamp;
-      clusterKills = 1;
+      cluster = [killEvents[i]];
       participants.clear();
       if (killEvents[i].actorId) participants.add(killEvents[i].actorId!);
       if (killEvents[i].targetId) participants.add(killEvents[i].targetId!);

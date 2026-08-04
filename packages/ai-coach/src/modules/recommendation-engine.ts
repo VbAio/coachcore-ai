@@ -32,13 +32,26 @@ export function generateImprovementPlan(
       'Largest gold gap — where did farm leak?',
       'Item timing vs power spike windows',
     ],
-    goalForNextMatch: `Die no more than ${Math.max(1, mistakes.filter(m => m.severity === 'major').length)} times to major positioning errors`,
+    goalForNextMatch: `Die no more than ${Math.max(
+      1,
+      mistakes.filter((m) =>
+        ['major', 'critical', 'high', 'game_losing'].includes(m.severity)
+      ).length
+    )} times to major positioning errors`,
     estimatedMmrGain: Math.round((100 - scores.overall) * 0.8),
   };
 }
 
 function severityWeight(s: string): number {
-  return { game_losing: 4, major: 3, medium: 2, minor: 1 }[s] ?? 0;
+  return {
+    critical: 5,
+    game_losing: 5,
+    high: 4,
+    major: 4,
+    medium: 2,
+    low: 1,
+    minor: 1,
+  }[s] ?? 0;
 }
 
 function weakestSkill(scores: SkillScores): string {

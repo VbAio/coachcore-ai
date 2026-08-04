@@ -199,13 +199,33 @@ replayRouter.get('/:id/status', async (req, res) => {
 });
 
 replayRouter.get('/:id/report', async (req, res) => {
-  const report = await prisma.coachingReport.findUnique({
-    where: { replayId: req.params.id },
+  const replay = await prisma.replay.findUnique({
+    where: { id: req.params.id },
+    include: { report: true },
   });
 
-  if (!report) {
+  if (!replay?.report) {
     return res.status(404).json({ success: false, error: 'Report not ready' });
   }
 
-  res.json({ success: true, data: report.report });
+  res.json({
+    success: true,
+    data: {
+      report: replay.report.report,
+      timeline: replay.timeline ?? null,
+    },
+  });
+});
+
+replayRouter.get('/:id/timeline', async (req, res) => {
+  const replay = await prisma.replay.findUnique({
+    where: { id: req.params.id },
+    select: { id: true, timeline: true },
+  });
+
+  if (!replay) {
+    return res.status(404).json({ success: false, error: 'Replay not found' });
+  }
+
+  res.json({ success: true, data: replay.timeline });
 });

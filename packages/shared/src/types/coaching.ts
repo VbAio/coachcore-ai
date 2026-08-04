@@ -1,6 +1,14 @@
 export type Grade = 'A+' | 'A' | 'B' | 'C' | 'D' | 'F';
 
-export type MistakeSeverity = 'minor' | 'medium' | 'major' | 'game_losing';
+/** Expanded severity scale; legacy values remain accepted for older reports */
+export type MistakeSeverity =
+  | 'critical'
+  | 'high'
+  | 'medium'
+  | 'low'
+  | 'minor'
+  | 'major'
+  | 'game_losing';
 
 export type MistakeCategory =
   | 'positioning'
@@ -16,7 +24,19 @@ export type MistakeCategory =
   | 'communication'
   | 'vision';
 
+export type MatchPhase = 'laning' | 'mid' | 'late';
+
+export interface ImpactEstimate {
+  /** Short human label, e.g. "tempo loss" */
+  label: string;
+  /** Optional numeric hint; always treat as estimate */
+  winProbabilityDelta?: number;
+  /** Optional MMR hint; always treat as estimate */
+  mmrDelta?: number;
+}
+
 export interface CoachInsight {
+  id?: string;
   timestamp: number;
   title: string;
   whatHappened: string;
@@ -32,6 +52,15 @@ export interface CoachInsight {
   /** true when insight is inferred rather than directly parsed */
   isEstimate: boolean;
   position?: { x: number; y: number };
+  /** CombatEvent.eventId references */
+  relatedEventIds?: string[];
+  involvedPlayerIds?: string[];
+  /** 0–100 confidence in the coaching claim */
+  confidence?: number;
+  impactEstimate?: ImpactEstimate;
+  phase?: MatchPhase;
+  /** 'mistake' | 'excellent' | 'neutral' for timeline filters */
+  polarity?: 'mistake' | 'excellent' | 'neutral';
 }
 
 export interface TeamFightBreakdown {
@@ -118,6 +147,12 @@ export interface CoachingReport {
   extractionConfidence?: 'full' | 'partial' | 'minimal';
   /** Notes from the .dem parser (gaps, subject selection, fallbacks) */
   parserNotes?: string[];
+}
+
+/** API payload for the VOD review page */
+export interface CoachingReportPayload {
+  report: CoachingReport;
+  timeline: import('./replay.js').MatchTimeline | null;
 }
 
 export interface ChatCoachMessage {
