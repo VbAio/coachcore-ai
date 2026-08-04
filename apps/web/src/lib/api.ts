@@ -50,17 +50,41 @@ export async function uploadReplay(
       }
     });
     xhr.addEventListener('load', () => {
+      if (xhr.status === 0) {
+        reject(
+          new Error(
+            `Could not reach API at ${API_URL}. Start it with npm run dev:api (or npm run dev).`
+          )
+        );
+        return;
+      }
       try {
         const json = JSON.parse(xhr.responseText);
         if (json.success) resolve(json.data);
-        else reject(new Error(json.error));
+        else reject(new Error(json.error ?? `Upload failed (${xhr.status})`));
       } catch {
-        reject(new Error('Upload failed'));
+        reject(
+          new Error(
+            xhr.status >= 500
+              ? `Upload failed: API error (${xhr.status})`
+              : `Upload failed: unexpected response from ${API_URL} (${xhr.status})`
+          )
+        );
       }
     });
-    xhr.addEventListener('error', () => reject(new Error('Upload failed')));
+    xhr.addEventListener('error', () =>
+      reject(
+        new Error(
+          `Could not reach API at ${API_URL}. Start it with npm run dev:api (or npm run dev).`
+        )
+      )
+    );
+    xhr.addEventListener('timeout', () =>
+      reject(new Error('Upload timed out — try a smaller file or check the API is running.'))
+    );
     xhr.open('POST', `${API_URL}/api/replays/upload`);
     xhr.setRequestHeader('x-user-id', authHeaders['x-user-id']);
+    xhr.timeout = 10 * 60 * 1000;
     xhr.send(formData);
   });
 }
