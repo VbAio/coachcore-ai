@@ -29,6 +29,10 @@ services:
       DATABASE_URL: postgresql://coachcore:coachcore@postgres:5432/coachcore?schema=public
       REDIS_URL: redis://redis:6379
       API_PORT: 4000
+      PORT: 4000
+      LOCAL_DEV: 'false'
+      STORAGE_PROVIDER: local
+      CORS_ORIGIN: http://localhost:3000
       AI_COACH_PROVIDER: mock
     depends_on:
       - postgres

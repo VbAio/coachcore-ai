@@ -2,23 +2,29 @@ import { Router, type Request } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
-import { v4 as uuid } from 'uuid';
 import { prisma } from '../lib/prisma.js';
 import { enqueueReplayProcessing } from '../jobs/replay-worker.js';
+import {
+  getTempUploadDir,
+  makeReplayStorageKey,
+  putReplayFile,
+} from '../lib/storage.js';
 
-const uploadDir = path.join(process.cwd(), 'uploads');
-const storage = multer.diskStorage({
+const tempDir = getTempUploadDir();
+
+const diskStorage = multer.diskStorage({
   destination: async (_req, _file, cb) => {
-    await fs.mkdir(uploadDir, { recursive: true });
-    cb(null, uploadDir);
+    await fs.mkdir(tempDir, { recursive: true });
+    cb(null, tempDir);
   },
   filename: (_req, file, cb) => {
-    cb(null, `${uuid()}${path.extname(file.originalname)}`);
+    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    cb(null, `${unique}${path.extname(file.originalname)}`);
   },
 });
 
 const upload = multer({
-  storage,
+  storage: diskStorage,
   limits: { fileSize: (Number(process.env.MAX_REPLAY_SIZE_MB) || 500) * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (path.extname(file.originalname).toLowerCase() === '.dem') {
@@ -45,6 +51,7 @@ replayRouter.post('/upload', upload.single('replay'), async (req, res) => {
 
     const user = await resolveUser(req);
     if (!user) {
+      await fs.unlink(req.file.path).catch(() => undefined);
       return res.status(401).json({ success: false, error: 'Sign in to upload replays' });
     }
 
@@ -53,11 +60,14 @@ replayRouter.post('/upload', upload.single('replay'), async (req, res) => {
         ? req.body.subjectSteamId.trim()
         : undefined;
 
+    const storageKey = makeReplayStorageKey(user.id, req.file.originalname);
+    await putReplayFile(storageKey, req.file.path);
+
     const replay = await prisma.replay.create({
       data: {
         userId: user.id,
         fileName: req.file.originalname,
-        filePath: req.file.path,
+        filePath: storageKey,
         fileSize: req.file.size,
         status: 'queued',
         stage: 'queued',
@@ -66,7 +76,7 @@ replayRouter.post('/upload', upload.single('replay'), async (req, res) => {
 
     await enqueueReplayProcessing({
       replayId: replay.id,
-      filePath: req.file.path,
+      filePath: storageKey,
       userId: user.id,
       subjectSteamId,
     });
@@ -76,6 +86,9 @@ replayRouter.post('/upload', upload.single('replay'), async (req, res) => {
       data: { replayId: replay.id, status: 'queued' },
     });
   } catch (error) {
+    if (req.file?.path) {
+      await fs.unlink(req.file.path).catch(() => undefined);
+    }
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Upload failed',

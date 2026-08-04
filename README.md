@@ -59,7 +59,17 @@ coachcore-ai/
 8. **Report Generator** — Assembles full coaching report
 9. **Coach Provider** — Mock (default) or OpenAI (when `OPENAI_API_KEY` set)
 
-> **Important:** The replay parser is a scaffold that reads demo headers and clearly labels estimated insights. Swap in an advanced Source 2 parser without changing the rest of the app.
+> **Important:** The replay parser uses **deadem** for real `.dem` extraction, with a scaffold fallback if parsing fails. Estimate badges appear when data is incomplete.
+
+## Production deploy (worldwide)
+
+To accept replay uploads from any device on the internet:
+
+1. Host **`apps/api`** on Railway (Docker) with Redis
+2. Store `.dem` files in **S3 or Cloudflare R2** (`STORAGE_PROVIDER=s3`)
+3. Point Vercel **`NEXT_PUBLIC_API_URL`** at the public Railway API URL
+
+Step-by-step: **[docs/DEPLOY.md](docs/DEPLOY.md)**
 
 ## Quick Start
 
@@ -129,11 +139,15 @@ See `.env.example` for all configuration options.
 
 | Variable | Description |
 |----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `REDIS_URL` | Redis connection string |
+| `DATABASE_URL` | PostgreSQL / Neon connection string |
+| `REDIS_URL` | Redis connection string (required when `LOCAL_DEV=false`) |
+| `LOCAL_DEV` | `true` for inline processing; `false` in production |
+| `STORAGE_PROVIDER` | `local` (dev) or `s3` (production) |
+| `S3_BUCKET` / `AWS_*` / `S3_ENDPOINT` | Object storage for `.dem` files |
+| `NEXT_PUBLIC_API_URL` | Public API origin used by the browser |
+| `CORS_ORIGIN` | Comma-separated allowed web origins |
 | `AI_COACH_PROVIDER` | `mock` (default) or `openai` |
 | `OPENAI_API_KEY` | OpenAI API key for AI coaching |
-| `CLERK_SECRET_KEY` | Clerk auth (optional) |
 
 ## Testing
 
@@ -147,9 +161,9 @@ npm test
 
 **Backend:** Node.js, Express, TypeScript, PostgreSQL, Prisma, Redis, BullMQ, WebSockets
 
-**Auth:** Clerk-ready (demo mode uses header-based user ID)
+**Auth:** Auth.js (Google/Discord/credentials) + Neon
 
-**Storage:** Local filesystem (S3/Supabase-ready architecture)
+**Storage:** Local filesystem in dev; S3 / Cloudflare R2 in production
 
 ## License
 

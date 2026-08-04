@@ -26,5 +26,7 @@ COPY --from=builder /app/apps/api/package.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/api/prisma ./prisma
 RUN mkdir -p uploads
+ENV PORT=4000
 EXPOSE 4000
+# Railway overrides PORT; app listens on 0.0.0.0:$PORT
 CMD ["sh", "-c", "npx prisma db push && node dist/index.js"]

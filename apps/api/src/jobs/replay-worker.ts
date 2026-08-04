@@ -2,10 +2,11 @@ import { prisma } from '../lib/prisma.js';
 import { getParserForFile } from '@coachcore/replay-parser';
 import { runCoachingPipeline } from '@coachcore/ai-coach';
 import { broadcastReplayStatus } from '../ws/replay-ws.js';
-import fs from 'fs/promises';
+import { getReplayBuffer } from '../lib/storage.js';
 
 export interface ReplayJobData {
   replayId: string;
+  /** Storage key (or legacy absolute filesystem path) */
   filePath: string;
   userId: string;
   subjectSteamId?: string;
@@ -39,7 +40,7 @@ async function updateStatus(
   });
 }
 
-/** Process a replay without Redis/BullMQ — used in LOCAL_DEV mode */
+/** Process a replay — works with local disk keys or S3 keys in filePath */
 export async function processReplayInline(
   replayId: string,
   filePath: string,
@@ -48,7 +49,7 @@ export async function processReplayInline(
   try {
     await updateStatus(replayId, 'parsing', 5, 'Reading replay file...');
 
-    const buffer = await fs.readFile(filePath);
+    const buffer = await getReplayBuffer(filePath);
     const parser = getParserForFile(buffer);
 
     if (!parser) {
@@ -125,8 +126,13 @@ export function startReplayWorker(): void {
     return;
   }
 
+  if (!process.env.REDIS_URL) {
+    console.error('REDIS_URL is required when LOCAL_DEV is not true');
+    throw new Error('REDIS_URL is required when LOCAL_DEV is not true');
+  }
+
   void import('./replay-queue.js').then(({ startBullWorker }) => {
     startBullWorker();
-    console.log('Replay worker started');
+    console.log('Replay worker started (BullMQ)');
   });
 }

@@ -7,18 +7,42 @@ import { coachRouter } from './routes/coach.js';
 import { leaderboardsRouter } from './routes/leaderboards.js';
 import { setupWebSocket } from './ws/replay-ws.js';
 import { startReplayWorker } from './jobs/replay-worker.js';
+import { getStorageProvider } from './lib/storage.js';
 
 dotenv.config({ path: '../../.env' });
 dotenv.config();
 
 const app = express();
-const port = Number(process.env.API_PORT) || 4000;
+/** Railway injects PORT; fall back to API_PORT / 4000 for local. */
+const port = Number(process.env.PORT || process.env.API_PORT) || 4000;
 
-app.use(cors({ origin: process.env.CORS_ORIGIN ?? 'http://localhost:3000' }));
-app.use(express.json());
+function parseCorsOrigins(): string | string[] | boolean {
+  const raw = process.env.CORS_ORIGIN ?? 'http://localhost:3000';
+  const origins = raw
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+  if (origins.length === 0) return true;
+  if (origins.length === 1) return origins[0];
+  return origins;
+}
+
+app.use(
+  cors({
+    origin: parseCorsOrigins(),
+    credentials: true,
+  })
+);
+app.use(express.json({ limit: '2mb' }));
 
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'coachcore-api' });
+  res.json({
+    status: 'ok',
+    service: 'coachcore-api',
+    storage: getStorageProvider(),
+    localDev: process.env.LOCAL_DEV === 'true',
+  });
 });
 
 app.get('/api/docs', (_req, res) => {
@@ -51,6 +75,8 @@ setupWebSocket(server);
 
 startReplayWorker();
 
-server.listen(port, () => {
-  console.log(`CoachCore API running on http://localhost:${port}`);
+server.listen(port, '0.0.0.0', () => {
+  console.log(`CoachCore API running on http://0.0.0.0:${port}`);
+  console.log(`Storage provider: ${getStorageProvider()}`);
+  console.log(`LOCAL_DEV: ${process.env.LOCAL_DEV === 'true'}`);
 });
