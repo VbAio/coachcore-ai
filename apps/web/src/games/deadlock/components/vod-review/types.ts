@@ -7,7 +7,6 @@ export type TimelineFilter =
   | 'assist'
   | 'objective'
   | 'item_purchase'
-  | 'ability_cast'
   | 'teamfight'
   | 'mistake'
   | 'excellent';

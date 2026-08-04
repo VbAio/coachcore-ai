@@ -78,35 +78,30 @@ export function detectMistakes(
   );
   const hasRealCombat = subjectDeaths.length + subjectKills.length > 0;
 
+  const subjectItems = replay.events.filter(
+    (e) => e.type === 'item_purchase' && (!e.actorId || e.actorId === replay.subjectPlayerId)
+  );
+
   // --- Deaths ---
   for (const death of subjectDeaths.slice(0, 16)) {
     const recentKill = subjectKills.find(
       (k) => Math.abs(k.timestamp - death.timestamp) < 20
     );
-    const nearbyCasts = replay.events.filter(
-      (e) =>
-        e.type === 'ability_cast' &&
-        e.actorId === replay.subjectPlayerId &&
-        e.timestamp >= death.timestamp - 12 &&
-        e.timestamp <= death.timestamp
-    );
+    const recentItem = subjectItemsNear(replay, death.timestamp, 45);
     const phase = phaseOf(death.timestamp);
     const killer = playerLabel(death.actorId);
-    const related = [
-      death.eventId,
-      recentKill?.eventId,
-      ...nearbyCasts.map((c) => c.eventId),
-    ].filter((x): x is string => Boolean(x));
+    const related = [death.eventId, recentKill?.eventId, recentItem?.eventId].filter(
+      (x): x is string => Boolean(x)
+    );
 
-    const castNote =
-      nearbyCasts.length > 0
-        ? ` In the 12s before death you cast: ${nearbyCasts.map((c) => c.ability ?? 'ability').join(', ')}.`
-        : ' No subject ability casts were recorded in the 12s before this death.';
+    const itemNote = recentItem
+      ? ` Your last recorded buy before this death was ${recentItem.item} at ${formatClock(recentItem.timestamp)}.`
+      : '';
 
     add({
       timestamp: death.timestamp,
       title: phase === 'laning' ? 'Lane-phase death' : 'Death',
-      whatHappened: `At ${formatClock(death.timestamp)} you were killed by ${killer}.${castNote}`,
+      whatHappened: `At ${formatClock(death.timestamp)} you were killed by ${killer}.${itemNote}`,
       whyItHappened: recentKill
         ? `You got a kill (${playerLabel(recentKill.targetId)}) within 20s — evidence suggests you stayed in the skirmish after the trade window closed.`
         : phase === 'laning'
@@ -120,11 +115,11 @@ export function detectMistakes(
           ? 'Concede contested farm, play closer to your tower, and only step up when both side-lane threats are visible.'
           : 'Disengage when you cannot name two enemy positions and an escape path; reset before the next objective.',
       expectedOutcome:
-        'Higher chance of surviving to the next item/ability spike and keeping wave pressure.',
-      howToImprove: `Pause the VOD at ${formatClock(death.timestamp)}. Write: (1) last safe window, (2) who killed you, (3) which ability you still had.`,
+        'Higher chance of surviving to the next item spike and keeping wave pressure.',
+      howToImprove: `Pause the VOD at ${formatClock(death.timestamp)}. Write: (1) last safe window, (2) who killed you, (3) whether your last item spike was online.`,
       drills: [
         `VOD drill: pause every death and list the last safe second`,
-        'Custom: practice disengage casts under pressure for 10 minutes',
+        'Custom: practice disengaging under pressure for 10 minutes',
       ],
       proExample:
         'High-MMR players leave skirmishes the moment the kill is no longer free.',
@@ -135,7 +130,7 @@ export function detectMistakes(
       involvedPlayerIds: [replay.subjectPlayerId, death.actorId].filter(
         (x): x is string => Boolean(x)
       ),
-      confidence: nearbyCasts.length > 0 || recentKill ? 88 : 78,
+      confidence: recentItem || recentKill ? 88 : 78,
       impactEstimate: {
         label: 'tempo / respawn loss',
         winProbabilityDelta: phase === 'laning' ? -0.08 : -0.05,
@@ -186,70 +181,29 @@ export function detectMistakes(
     });
   }
 
-  // --- Ability casts near deaths (ability usage) ---
-  for (const death of subjectDeaths.slice(0, 8)) {
-    const wasteCasts = replay.events.filter(
-      (e) =>
-        e.type === 'ability_cast' &&
-        e.actorId === replay.subjectPlayerId &&
-        e.timestamp >= death.timestamp - 6 &&
-        e.timestamp < death.timestamp
-    );
-    if (wasteCasts.length === 0) continue;
-    const related = [death.eventId, ...wasteCasts.map((c) => c.eventId)].filter(
-      (x): x is string => Boolean(x)
-    );
-    add({
-      timestamp: death.timestamp,
-      title: 'Ability cast before death',
-      whatHappened: `At ${formatClock(death.timestamp)} you died after casting ${wasteCasts
-        .map((c) => c.ability ?? 'ability')
-        .join(', ')} in the prior 6 seconds.`,
-      whyItHappened:
-        'Ability commitment without a secured exit — the cast timeline ends in a death event.',
-      whyBadOrGood:
-        'Burning key abilities into a losing fight leaves you without tools for the next wave.',
-      alternativePlay: `Hold ${wasteCasts[0]?.ability ?? 'your key ability'} until you have a confirmed escape or a numbers advantage.`,
-      expectedOutcome: 'Fewer deaths with major cooldowns wasted.',
-      howToImprove: `At ${formatClock(death.timestamp)}, check whether the cast had an exit plan before the commit.`,
-      drills: ['Ability-commit checklist: target, escape, backup teammate'],
-      category: 'ability_usage',
-      severity: 'medium',
-      isEstimate: false,
-      relatedEventIds: related,
-      involvedPlayerIds: [replay.subjectPlayerId],
-      confidence: 82,
-      phase: phaseOf(death.timestamp),
-      polarity: 'mistake',
-    });
-  }
-
-  // --- Item purchases ---
-  const subjectItems = replay.events.filter(
-    (e) => e.type === 'item_purchase' && (!e.actorId || e.actorId === replay.subjectPlayerId)
-  );
-  for (const item of subjectItems.slice(0, 8)) {
+  // Itemization deep-dives are produced by analyzeBuild() → report.buildReview.
+  // Keep a thin timeline marker for each purchase so the scrubber can jump to buys.
+  for (const item of subjectItems.slice(0, 24)) {
     const related = [item.eventId].filter((x): x is string => Boolean(x));
     if (related.length === 0) continue;
     add({
       timestamp: item.timestamp,
-      title: `Item: ${item.item ?? 'purchase'}`,
-      whatHappened: `At ${formatClock(item.timestamp)} the demo recorded purchase of ${item.item ?? 'an item'}.`,
-      whyItHappened:
-        'Item timing is taken from the purchase notification in the replay — cost/efficiency data is not available yet.',
-      whyBadOrGood:
-        'Purchase timing shapes your next power spike relative to fights on the timeline.',
-      alternativePlay: `Compare this buy at ${formatClock(item.timestamp)} against the next teamfight on the timeline — buy before contested objectives when possible.`,
-      expectedOutcome: 'Power spikes aligned with fights rather than after them.',
-      howToImprove:
-        'Before buying, name the next objective timer and whether you need combat stats or sustain.',
+      title: `Purchased ${item.item ?? 'item'}`,
+      whatHappened: `At ${formatClock(item.timestamp)} you purchased ${item.item ?? 'an item'}${
+        item.value ? ` (${item.value} souls)` : ''
+      }. Open the Items panel for full AI analysis.`,
+      whyItHappened: 'Purchase notification from the demo event stream.',
+      whyBadOrGood: 'See Items → AI analysis for timing, alternatives, and fight impact.',
+      alternativePlay: 'Select this purchase in the Items panel for recommended alternatives.',
+      expectedOutcome: 'Power spike aligned with the next fight/objective window.',
+      howToImprove: 'Review the Items build path and compare timing to the next teamfight.',
       drills: ['Item timing VOD: mark each buy vs next fight'],
       category: 'itemization',
       severity: 'low',
       isEstimate: false,
       relatedEventIds: related,
       involvedPlayerIds: [replay.subjectPlayerId],
-      confidence: 70,
+      confidence: 75,
       phase: phaseOf(item.timestamp),
       polarity: 'neutral',
     });
@@ -461,4 +415,16 @@ function shortId(id: string): string {
   if (id.startsWith('name:')) return id.slice(5);
   if (id.length > 12) return `${id.slice(0, 6)}…`;
   return id;
+}
+
+function subjectItemsNear(replay: ParsedReplay, timestamp: number, windowSec: number) {
+  return replay.events
+    .filter(
+      (e) =>
+        e.type === 'item_purchase' &&
+        (!e.actorId || e.actorId === replay.subjectPlayerId) &&
+        e.timestamp <= timestamp &&
+        timestamp - e.timestamp <= windowSec
+    )
+    .sort((a, b) => b.timestamp - a.timestamp)[0];
 }

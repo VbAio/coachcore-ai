@@ -9,7 +9,15 @@ export function buildTimelineRows(
 
   if (timeline) {
     for (const e of timeline.events) {
-      if (e.type === 'damage' || e.type === 'heal' || e.type === 'item_activate') continue;
+      // Abilities intentionally excluded from Replay Analysis UI
+      if (
+        e.type === 'ability_cast' ||
+        e.type === 'damage' ||
+        e.type === 'heal' ||
+        e.type === 'item_activate'
+      ) {
+        continue;
+      }
       rows.push({
         id: e.eventId,
         timestamp: e.timestamp,
@@ -32,12 +40,22 @@ export function buildTimelineRows(
   }
 
   for (const insight of report.timeline) {
+    if (insight.category === 'ability_usage') continue;
     const id = insight.id ?? `insight-${insight.timestamp}-${insight.title}`;
-    const polarity = insight.polarity ?? (insight.severity === 'low' || insight.severity === 'minor' ? 'neutral' : 'mistake');
+    const polarity =
+      insight.polarity ??
+      (insight.severity === 'low' || insight.severity === 'minor' ? 'neutral' : 'mistake');
     rows.push({
       id,
       timestamp: insight.timestamp,
-      kind: polarity === 'excellent' ? 'excellent' : polarity === 'mistake' ? 'mistake' : 'all',
+      kind:
+        polarity === 'excellent'
+          ? 'excellent'
+          : polarity === 'mistake'
+            ? 'mistake'
+            : insight.category === 'itemization'
+              ? 'item_purchase'
+              : 'all',
       label: insight.title,
       insight,
       eventIds: insight.relatedEventIds,
@@ -48,7 +66,6 @@ export function buildTimelineRows(
     });
   }
 
-  // Deduplicate by id, prefer insight-enriched rows when same id
   const byId = new Map<string, TimelineRow>();
   for (const row of rows) {
     const existing = byId.get(row.id);
@@ -57,5 +74,7 @@ export function buildTimelineRows(
     }
   }
 
-  return [...byId.values()].sort((a, b) => a.timestamp - b.timestamp || a.label.localeCompare(b.label));
+  return [...byId.values()].sort(
+    (a, b) => a.timestamp - b.timestamp || a.label.localeCompare(b.label)
+  );
 }

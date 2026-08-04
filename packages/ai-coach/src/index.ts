@@ -7,4 +7,5 @@ export * from './modules/heatmap-generator.js';
 export * from './modules/score-engine.js';
 export * from './modules/recommendation-engine.js';
 export * from './modules/report-generator.js';
+export * from './modules/item-analyzer.js';
 export * from './pipeline/coaching-pipeline.js';

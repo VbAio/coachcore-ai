@@ -14,7 +14,6 @@ const FILTERS: { id: TimelineFilter; label: string }[] = [
   { id: 'teamfight', label: 'Fights' },
   { id: 'objective', label: 'Objectives' },
   { id: 'item_purchase', label: 'Items' },
-  { id: 'ability_cast', label: 'Abilities' },
 ];
 
 interface Props {

@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
-import type { CoachingReportPayload } from '@coachcore/shared';
+import type { CoachingReportPayload, MatchTimelinePurchase } from '@coachcore/shared';
 import { cn } from '@/lib/utils';
 import { buildTimelineRows } from './build-timeline-rows';
 import { CoachingMomentCard } from './CoachingMomentCard';
 import { EventTimeline } from './EventTimeline';
 import { FightPanel } from './FightPanel';
+import { ItemsPanel } from './ItemsPanel';
 import { MatchMap } from './MatchMap';
 import { PlaybackControls } from './PlaybackControls';
 import type { TimelineFilter, TimelineRow } from './types';
@@ -20,6 +21,20 @@ export function VodReviewShell({ data }: Props) {
   const { report, timeline } = data;
   const duration = timeline?.durationSeconds ?? report.timeline.at(-1)?.timestamp ?? 600;
   const rows = useMemo(() => buildTimelineRows(report, timeline), [report, timeline]);
+  const purchases: MatchTimelinePurchase[] = useMemo(() => {
+    if (timeline?.enrichedPurchases?.length) return timeline.enrichedPurchases;
+    // Fallback for older reports that only have buildReview purchases
+    return (report.buildReview?.purchases ?? []).map((p) => ({
+      eventId: p.eventId,
+      timestamp: p.timestamp,
+      item: p.itemName,
+      itemId: p.itemId,
+      cost: p.cost,
+      category: p.category,
+      slotIndex: p.slotIndex,
+      totalSoulsSpent: p.cost,
+    }));
+  }, [timeline, report.buildReview]);
 
   const [t, setT] = useState(rows[0]?.timestamp ?? 0);
   const [playing, setPlaying] = useState(false);
@@ -28,6 +43,7 @@ export function VodReviewShell({ data }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(
     rows.find((r) => r.insight)?.id ?? rows[0]?.id ?? null
   );
+  const [selectedPurchaseId, setSelectedPurchaseId] = useState<string | null>(null);
   const [activeFightId, setActiveFightId] = useState<string | null>(null);
   const speedRef = useRef(speed);
   const durationRef = useRef(duration);
@@ -38,7 +54,9 @@ export function VodReviewShell({ data }: Props) {
   const insight =
     selected?.insight ??
     report.timeline.find(
-      (i) => Math.abs(i.timestamp - t) < 2 || i.relatedEventIds?.some((id) => id === selectedId)
+      (i) =>
+        i.category !== 'ability_usage' &&
+        (Math.abs(i.timestamp - t) < 2 || i.relatedEventIds?.some((id) => id === selectedId))
     ) ??
     null;
 
@@ -83,6 +101,20 @@ export function VodReviewShell({ data }: Props) {
     setT(row.timestamp);
     setPlaying(false);
     if (row.kind === 'teamfight') setActiveFightId(row.id);
+    if (row.kind === 'item_purchase') {
+      const purchase =
+        purchases.find((p) => p.eventId === row.id) ??
+        purchases.find((p) => Math.abs(p.timestamp - row.timestamp) < 1);
+      if (purchase) setSelectedPurchaseId(purchase.eventId);
+    }
+  };
+
+  const selectPurchase = (purchase: MatchTimelinePurchase) => {
+    setSelectedPurchaseId(purchase.eventId);
+    setT(purchase.timestamp);
+    setPlaying(false);
+    setSelectedId(purchase.eventId);
+    setFilter('item_purchase');
   };
 
   const confidence = report.extractionConfidence ?? timeline?.extractionConfidence ?? 'minimal';
@@ -90,7 +122,6 @@ export function VodReviewShell({ data }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Compact score strip */}
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-zinc-800 pb-4">
         <div>
           <div className="flex items-baseline gap-3">
@@ -110,6 +141,11 @@ export function VodReviewShell({ data }: Props) {
               {k} <span className="text-zinc-200">{v}</span>
             </span>
           ))}
+          {report.buildReview && (
+            <span className="rounded bg-zinc-900 px-2 py-1 text-[11px] text-zinc-400">
+              items <span className="text-amber-300">{report.buildReview.overallScore}</span>
+            </span>
+          )}
           <span
             className={cn(
               'rounded px-2 py-1 text-[11px]',
@@ -142,7 +178,6 @@ export function VodReviewShell({ data }: Props) {
       )}
 
       <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)_320px] lg:items-stretch">
-        {/* Left: timeline */}
         <aside className="flex min-h-[420px] flex-col rounded-xl border border-zinc-800 bg-zinc-950/40 p-3">
           <div className="mb-2 text-[11px] uppercase tracking-wide text-zinc-500">Timeline</div>
           <EventTimeline
@@ -154,7 +189,6 @@ export function VodReviewShell({ data }: Props) {
           />
         </aside>
 
-        {/* Center: map + controls */}
         <section className="flex min-h-[420px] flex-col gap-3">
           <MatchMap
             timeline={timeline}
@@ -179,11 +213,10 @@ export function VodReviewShell({ data }: Props) {
             }}
           />
           <p className="text-center text-[11px] text-zinc-600">
-            Space play/pause · J / L ±1s · click timeline to jump
+            Space play/pause · J / L ±1s · click items to jump
           </p>
         </section>
 
-        {/* Right: coaching + fights */}
         <aside className="flex min-h-[420px] flex-col gap-3">
           <CoachingMomentCard insight={insight} />
           <FightPanel
@@ -194,21 +227,24 @@ export function VodReviewShell({ data }: Props) {
               setT(start);
               setActiveFightId(fightId);
               setPlaying(false);
-              const row = rows.find((r) => r.id === fightId || (r.kind === 'teamfight' && r.timestamp === start));
+              const row = rows.find(
+                (r) => r.id === fightId || (r.kind === 'teamfight' && r.timestamp === start)
+              );
               if (row) setSelectedId(row.id);
             }}
           />
-          <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 text-xs text-zinc-400">
-            <div className="mb-1 text-[11px] uppercase tracking-wide text-zinc-500">Practice</div>
-            <p className="text-zinc-300">{report.improvementPlan.todaysFocus}</p>
-            <ul className="mt-2 space-y-1">
-              {report.improvementPlan.practiceDrills.slice(0, 3).map((d, i) => (
-                <li key={i}>· {d}</li>
-              ))}
-            </ul>
-          </div>
         </aside>
       </div>
+
+      <ItemsPanel
+        purchases={purchases}
+        review={report.buildReview}
+        t={t}
+        duration={duration}
+        selectedEventId={selectedPurchaseId}
+        onSelectPurchase={selectPurchase}
+        onClearSelection={() => setSelectedPurchaseId(null)}
+      />
     </div>
   );
 }

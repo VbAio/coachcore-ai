@@ -165,6 +165,8 @@ describe('Real-events coaching pipeline', () => {
     expect(report.timeline.length).toBeGreaterThan(0);
     expect(report.overallGrade).toBeDefined();
     expect(report.estimatedSections).toContain('economyAnalysis');
+    expect(report.buildReview).toBeDefined();
+    expect(report.timeline.every((m) => m.category !== 'ability_usage')).toBe(true);
   });
 
   it('OpenAI provider falls back to rule report without API key', async () => {

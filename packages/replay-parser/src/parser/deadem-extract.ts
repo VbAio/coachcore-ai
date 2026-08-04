@@ -8,6 +8,7 @@ import type {
   ReplayPlayer,
   TeamFight,
 } from '@coachcore/shared';
+import { resolveItemDef } from '@coachcore/shared';
 import {
   InterceptorStage,
   MessagePacketType,
@@ -521,16 +522,45 @@ export async function extractWithDeadem(
       }
 
       if (messagePacket.type === MessagePacketType.CITADEL_USER_MESSAGE_ITEM_PURCHASE_NOTIFICATION) {
-        const item = String(
+        const rawName = String(
           messagePacket.data.itemName ?? messagePacket.data.item ?? 'item'
         );
-        itemPurchases.push({ timestamp: ts, item, cost: 0 });
+        const def = resolveItemDef(rawName);
+        const purchaserHandle =
+          messagePacket.data.player ??
+          messagePacket.data.buyer ??
+          messagePacket.data.purchaser ??
+          messagePacket.data.entindexPlayer;
+        let actorId: string | undefined;
+        if (purchaserHandle != null) {
+          const ent =
+            typeof purchaserHandle === 'number'
+              ? demo.getEntity(purchaserHandle)
+              : demo.getEntityByHandle(purchaserHandle);
+          if (ent) {
+            const ctrl = resolveControllerFromPawn(demo, ent.index);
+            const pname = ctrl ? String(tryField(ctrl, 'm_iszPlayerName') ?? '') : '';
+            const steam = pname ? steamByName.get(pname) : undefined;
+            actorId = steam ?? (pname ? `name:${pname}` : undefined);
+          }
+        }
+        const eventId = nextEventId('item_purchase', ts);
+        itemPurchases.push({
+          timestamp: ts,
+          item: def.name,
+          cost: def.cost,
+          actorId,
+          itemId: def.id,
+          category: def.category,
+          eventId,
+        });
         events.push({
-          eventId: nextEventId('item_purchase', ts),
+          eventId,
           timestamp: ts,
           type: 'item_purchase',
-          item,
-          value: 0,
+          item: def.name,
+          value: def.cost,
+          actorId,
         });
         return;
       }

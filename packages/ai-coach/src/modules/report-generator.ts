@@ -11,6 +11,7 @@ import { generateTimeline } from './timeline-generator.js';
 import { generateHeatmaps } from './heatmap-generator.js';
 import { computeSkillScores, scoreToGrade } from './score-engine.js';
 import { generateImprovementPlan } from './recommendation-engine.js';
+import { analyzeBuild } from './item-analyzer.js';
 
 export function generateReport(
   replayId: string,
@@ -54,6 +55,16 @@ export function generateReport(
     .filter(([k]) => k !== 'overall')
     .sort((a, b) => (b[1] as number) - (a[1] as number));
 
+  const buildReview = analyzeBuild(replay);
+  if (buildReview.purchases.every((p) => p.isEstimate) || buildReview.purchases.length === 0) {
+    estimatedSections.push('buildReview');
+  }
+
+  // Prefer combat moments in the scrubber timeline — item deep-dives live in buildReview
+  const timelineMoments = generateTimeline(
+    mistakes.filter((m) => m.category !== 'ability_usage')
+  );
+
   return {
     id: `report-${replayId}`,
     replayId,
@@ -69,9 +80,9 @@ export function generateReport(
       weaknesses[1]?.[0]?.replace('_', ' ') ?? 'Economy',
       weaknesses[2]?.[0]?.replace('_', ' ') ?? 'Team fighting',
     ] as [string, string, string],
-    lanePhaseAnalysis: laneMistakes,
+    lanePhaseAnalysis: laneMistakes.filter((m) => m.category !== 'ability_usage'),
     macroAnalysis: macroMistakes,
-    microAnalysis: microMistakes,
+    microAnalysis: microMistakes.filter((m) => m.category !== 'ability_usage'),
     teamFightAnalysis: buildTeamFightBreakdowns(replay, mistakes),
     heatmaps: generateHeatmaps(replay, features),
     economyAnalysis:
@@ -79,11 +90,12 @@ export function generateReport(
         ? []
         : mistakes.filter((m) => m.category === 'economy'),
     heroSpecificCoaching: buildHeroCoaching(replay, mistakes),
-    timeline: generateTimeline(mistakes),
+    timeline: timelineMoments,
     mistakesByCategory: grouped,
     improvementPlan: generateImprovementPlan(mistakes, scores),
     proComparison: buildProComparison(features),
     skillScores: scores,
+    buildReview,
     estimatedSections,
     extractionConfidence: replay.extractionConfidence,
     parserNotes: replay.parserNotes,

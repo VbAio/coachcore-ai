@@ -1,3 +1,5 @@
+import { resolveItemDef, type DeadlockItemDef } from '../data/deadlock-items.js';
+
 export interface ReplayMetadata {
   map: string;
   date: string;
@@ -94,6 +96,12 @@ export interface ItemPurchase {
   item: string;
   cost: number;
   actorId?: string;
+  /** Catalog id when resolved */
+  itemId?: string;
+  category?: 'Weapon' | 'Vitality' | 'Spirit';
+  /** Inventory slot index after purchase (0-based, category-aware) */
+  slotIndex?: number;
+  eventId?: string;
 }
 
 export type ReplayProcessingStage =
@@ -155,6 +163,19 @@ export interface MatchTimelineFight {
   outcome: TeamFight['outcome'];
 }
 
+export interface MatchTimelinePurchase {
+  eventId: string;
+  timestamp: number;
+  item: string;
+  itemId: string;
+  cost: number;
+  category: 'Weapon' | 'Vitality' | 'Spirit';
+  slotIndex: number;
+  actorId?: string;
+  /** Running total souls spent after this buy (catalog costs) */
+  totalSoulsSpent: number;
+}
+
 export interface MatchTimeline {
   version: 1;
   replayId?: string;
@@ -168,6 +189,8 @@ export interface MatchTimeline {
   tracks: MatchTimelineTrack[];
   teamFights: MatchTimelineFight[];
   itemPurchases: ItemPurchase[];
+  /** Subject purchases enriched for the Items panel */
+  enrichedPurchases?: MatchTimelinePurchase[];
 }
 
 /** Build a compact client timeline from a full parse result. */
@@ -181,7 +204,10 @@ export function buildMatchTimeline(
     return p?.name ?? id.replace(/^name:/, '').replace(/^steam:/, '');
   };
 
-  const events: MatchTimelineEvent[] = replay.events.map((e, i) => {
+  // Drop ability_cast from the client timeline — Items replace Abilities in VOD UI
+  const sourceEvents = replay.events.filter((e) => e.type !== 'ability_cast');
+
+  const events: MatchTimelineEvent[] = sourceEvents.map((e, i) => {
     const eventId = e.eventId ?? `evt-${i}-${e.type}-${e.timestamp}`;
     let label: string = e.type;
     if (e.type === 'kill') {
@@ -190,8 +216,6 @@ export function buildMatchTimeline(
       label = `${playerName(e.targetId)} died`;
     } else if (e.type === 'assist') {
       label = `${playerName(e.actorId)} assisted`;
-    } else if (e.type === 'ability_cast') {
-      label = `${playerName(e.actorId)} cast ${e.ability ?? 'ability'}`;
     } else if (e.type === 'item_purchase') {
       label = `Purchased ${e.item ?? 'item'}`;
     } else if (e.type === 'objective') {
@@ -225,13 +249,50 @@ export function buildMatchTimeline(
     });
   }
 
-  // Prefer denser subject track; downsample others already done at extract
   const tracks: MatchTimelineTrack[] = [...byPlayer.entries()].map(
     ([playerId, samples]) => ({
       playerId,
       samples: samples.sort((a, b) => a.t - b.t),
     })
   );
+
+  const categorySlots: Record<'Weapon' | 'Vitality' | 'Spirit', number> = {
+    Weapon: 0,
+    Vitality: 0,
+    Spirit: 0,
+  };
+  let totalSoulsSpent = 0;
+  const purchaseEvents = sourceEvents
+    .filter((e) => e.type === 'item_purchase')
+    .filter((e) => !e.actorId || e.actorId === replay.subjectPlayerId)
+    .sort((a, b) => a.timestamp - b.timestamp);
+
+  const enrichedPurchases: MatchTimelinePurchase[] = purchaseEvents.map((e, idx) => {
+    const def = resolveItemDef(e.item ?? 'Unknown Item');
+    const cost = e.value && e.value > 0 ? e.value : def.cost;
+    totalSoulsSpent += cost;
+    const localSlot = categorySlots[def.category] % 4;
+    categorySlots[def.category] += 1;
+    const slotIndex =
+      (def.category === 'Weapon' ? 0 : def.category === 'Vitality' ? 4 : 8) + localSlot;
+    return {
+      eventId: e.eventId ?? `purchase-${idx}-${e.timestamp}`,
+      timestamp: e.timestamp,
+      item: def.name,
+      itemId: def.id,
+      cost,
+      category: def.category,
+      slotIndex,
+      actorId: e.actorId ?? replay.subjectPlayerId,
+      totalSoulsSpent,
+    };
+  });
+
+  // Prefer itemPurchases array if events were empty
+  const fallbackPurchases =
+    enrichedPurchases.length > 0
+      ? enrichedPurchases
+      : enrichPurchasesFromList(replay.itemPurchases, replay.subjectPlayerId, resolveItemDef);
 
   return {
     version: 1,
@@ -262,5 +323,42 @@ export function buildMatchTimeline(
       outcome: f.outcome,
     })),
     itemPurchases: replay.itemPurchases,
+    enrichedPurchases: fallbackPurchases,
   };
+}
+
+function enrichPurchasesFromList(
+  purchases: ItemPurchase[],
+  subjectId: string,
+  resolve: (name: string) => DeadlockItemDef
+): MatchTimelinePurchase[] {
+  const categorySlots: Record<'Weapon' | 'Vitality' | 'Spirit', number> = {
+    Weapon: 0,
+    Vitality: 0,
+    Spirit: 0,
+  };
+  let totalSoulsSpent = 0;
+  return [...purchases]
+    .filter((p) => !p.actorId || p.actorId === subjectId)
+    .sort((a, b) => a.timestamp - b.timestamp)
+    .map((p, idx) => {
+      const def = resolve(p.item);
+      const cost = p.cost > 0 ? p.cost : def.cost;
+      totalSoulsSpent += cost;
+      const localSlot = categorySlots[def.category] % 4;
+      categorySlots[def.category] += 1;
+      const slotIndex =
+        (def.category === 'Weapon' ? 0 : def.category === 'Vitality' ? 4 : 8) + localSlot;
+      return {
+        eventId: p.eventId ?? `purchase-${idx}-${p.timestamp}`,
+        timestamp: p.timestamp,
+        item: def.name,
+        itemId: def.id,
+        cost,
+        category: def.category,
+        slotIndex,
+        actorId: p.actorId ?? subjectId,
+        totalSoulsSpent,
+      };
+    });
 }

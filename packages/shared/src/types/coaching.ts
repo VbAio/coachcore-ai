@@ -118,6 +118,56 @@ export interface ProComparison {
   isEstimate: boolean;
 }
 
+export interface ItemPurchaseAnalysis {
+  eventId: string;
+  timestamp: number;
+  itemName: string;
+  itemId: string;
+  cost: number;
+  category: 'Weapon' | 'Vitality' | 'Spirit';
+  slotIndex: number;
+  rating: 'excellent' | 'good' | 'okay' | 'questionable' | 'poor';
+  whyPurchased: string;
+  timingAssessment: string;
+  alternativeItem?: string;
+  alternativeReason?: string;
+  fightImpact: string;
+  problemSolved: string;
+  powerSpikeNote: string;
+  confidence: number;
+  isEstimate: boolean;
+  relatedEventIds: string[];
+}
+
+export interface BuildPhaseItems {
+  phase: 'starting' | 'early' | 'mid' | 'late' | 'final';
+  label: string;
+  itemIds: string[];
+  itemNames: string[];
+  timestamps: number[];
+}
+
+export interface BuildReview {
+  overallScore: number;
+  earlyScore: number;
+  midScore: number;
+  lateScore: number;
+  bestPurchase?: ItemPurchaseAnalysis;
+  worstPurchase?: ItemPurchaseAnalysis;
+  delayedPurchase?: string;
+  missedPurchase?: string;
+  recommendedBuildOrder: string[];
+  alternativeVsEnemy: string;
+  summary: string;
+  phases: BuildPhaseItems[];
+  comparisons: Array<{
+    versus: string;
+    notes: string[];
+    isEstimate: boolean;
+  }>;
+  purchases: ItemPurchaseAnalysis[];
+}
+
 export interface CoachingReport {
   id: string;
   replayId: string;
@@ -141,6 +191,8 @@ export interface CoachingReport {
   improvementPlan: ImprovementPlan;
   proComparison: ProComparison[];
   skillScores: SkillScores;
+  /** Itemization deep-dive for the VOD Items panel */
+  buildReview?: BuildReview;
   /** Sections marked as estimates when parser data was incomplete */
   estimatedSections: string[];
   /** Parser confidence from replay extraction */
