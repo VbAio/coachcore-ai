@@ -2,10 +2,11 @@
 
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/api';
 import { motion } from 'framer-motion';
-import { TrendingUp, Target, Upload, Trophy, AlertTriangle, Sparkles } from 'lucide-react';
+import { TrendingUp, Target, Upload, Trophy, AlertTriangle, Sparkles, LogIn } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   RadarChart, PolarGrid, PolarAngleAxis, Radar,
@@ -14,57 +15,107 @@ import { useGamePath } from '@/shared/context/game-context';
 import type { GamePageProps } from '@/games/types';
 
 interface DashboardData {
-  recentAnalyses: Array<{ id: string; hero: string; grade?: string; createdAt: string }>;
+  recentAnalyses: Array<{ id: string; hero: string | null; grade?: string; createdAt: string; score?: number }>;
   winRate: number;
   avgMistakesPerGame: number;
   improvementScore: number;
   mmrPrediction: number;
+  totalReplays?: number;
+  hasUploads?: boolean;
+  signedIn?: boolean;
+  skillHistory?: Array<{ date: string; scores: Record<string, number> }>;
+  skillAverages?: {
+    mechanics: number;
+    macro: number;
+    awareness: number;
+    positioning: number;
+    economy: number;
+    teamFighting: number;
+  } | null;
   dailyRecommendations: Array<{ title: string; description: string; category: string; priority: string }>;
 }
 
 export function DeadlockDashboard(_props: GamePageProps) {
   const replaysPath = useGamePath('replays');
+  const { status } = useSession();
   const { data, isLoading } = useQuery({
     queryKey: ['deadlock-dashboard'],
     queryFn: () => apiFetch<DashboardData>('/api/coach/dashboard'),
   });
 
-  const progressData = [
-    { week: 'W1', score: 62 },
-    { week: 'W2', score: 68 },
-    { week: 'W3', score: 71 },
-    { week: 'W4', score: data?.improvementScore ?? 74 },
-  ];
+  const hasUploads = Boolean(data?.hasUploads);
+  const signedIn = status === 'authenticated' || Boolean(data?.signedIn);
 
-  const radarData = [
-    { skill: 'Mechanics', value: 72 },
-    { skill: 'Macro', value: 65 },
-    { skill: 'Awareness', value: 58 },
-    { skill: 'Positioning', value: 70 },
-    { skill: 'Economy', value: 68 },
-    { skill: 'Team Fight', value: 63 },
-  ];
+  const progressData =
+    hasUploads && data?.skillHistory?.length
+      ? data.skillHistory.map((point, i) => ({
+          week: `W${i + 1}`,
+          score: point.scores.overall ?? 0,
+        }))
+      : [
+          { week: 'W1', score: 0 },
+          { week: 'W2', score: 0 },
+          { week: 'W3', score: 0 },
+          { week: 'W4', score: 0 },
+        ];
+
+  const radarData = hasUploads && data?.skillAverages
+    ? [
+        { skill: 'Mechanics', value: data.skillAverages.mechanics ?? 0 },
+        { skill: 'Macro', value: data.skillAverages.macro ?? 0 },
+        { skill: 'Awareness', value: data.skillAverages.awareness ?? 0 },
+        { skill: 'Positioning', value: data.skillAverages.positioning ?? 0 },
+        { skill: 'Economy', value: data.skillAverages.economy ?? 0 },
+        { skill: 'Team Fight', value: data.skillAverages.teamFighting ?? 0 },
+      ]
+    : [
+        { skill: 'Mechanics', value: 0 },
+        { skill: 'Macro', value: 0 },
+        { skill: 'Awareness', value: 0 },
+        { skill: 'Positioning', value: 0 },
+        { skill: 'Economy', value: 0 },
+        { skill: 'Team Fight', value: 0 },
+      ];
 
   return (
     <div>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      <div className="mb-8 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="text-3xl font-bold text-white">Dashboard</h1>
-          <p className="text-zinc-400">Track your Deadlock improvement</p>
+          <p className="text-zinc-400">
+            {hasUploads
+              ? 'Progress updates from your completed replay uploads'
+              : 'Stats start at 0 — sign in and upload to track progress'}
+          </p>
         </div>
-        <Link href={replaysPath}>
-          <Button variant="glow" className="gap-2">
-            <Upload className="h-4 w-4" />
-            Upload Replay
-          </Button>
-        </Link>
+        {signedIn ? (
+          <Link href={replaysPath}>
+            <Button variant="glow" className="gap-2">
+              <Upload className="h-4 w-4" />
+              Upload Replay
+            </Button>
+          </Link>
+        ) : (
+          <Link href={`/login?callbackUrl=${encodeURIComponent(replaysPath)}`}>
+            <Button variant="glow" className="gap-2">
+              <LogIn className="h-4 w-4" />
+              Sign in to upload
+            </Button>
+          </Link>
+        )}
       </div>
 
+      {!signedIn && (
+        <div className="mb-6 rounded-2xl border border-purple-500/30 bg-purple-500/10 px-4 py-3 text-sm text-purple-100">
+          Sign in to upload replays and track your improvement. Until then, every stat stays at 0.
+        </div>
+      )}
+
       {isLoading ? (
-        <div className="text-zinc-400 text-center py-20">Loading dashboard...</div>
+        <div className="py-20 text-center text-zinc-400">Loading dashboard...</div>
       ) : (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
             {[
               { label: 'Win Rate', value: `${data?.winRate ?? 0}%`, icon: Trophy, color: 'text-yellow-400' },
               { label: 'Avg Mistakes/Game', value: data?.avgMistakesPerGame ?? 0, icon: AlertTriangle, color: 'text-red-400' },
@@ -86,32 +137,49 @@ export function DeadlockDashboard(_props: GamePageProps) {
             ))}
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-6 mb-8">
-            <div className="lg:col-span-2 glass rounded-2xl p-6">
-              <h2 className="text-lg font-semibold text-white mb-4">Weekly Progress</h2>
-              <ResponsiveContainer width="100%" height={220}>
-                <LineChart data={progressData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                  <XAxis dataKey="week" stroke="#666" />
-                  <YAxis stroke="#666" domain={[50, 100]} />
-                  <Tooltip contentStyle={{ background: '#111', border: '1px solid #333' }} />
-                  <Line type="monotone" dataKey="score" stroke="#9333ea" strokeWidth={2} dot={{ fill: '#9333ea' }} />
-                </LineChart>
-              </ResponsiveContainer>
+          <div className="mb-8 grid gap-6 lg:grid-cols-3">
+            <div className="rounded-2xl p-6 glass lg:col-span-2">
+              <h2 className="mb-4 text-lg font-semibold text-white">Weekly Progress</h2>
+              {!hasUploads ? (
+                <p className="py-16 text-center text-sm text-zinc-500">
+                  No progress yet. Upload a replay to start your chart from zero.
+                </p>
+              ) : (
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={progressData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                    <XAxis dataKey="week" stroke="#666" />
+                    <YAxis stroke="#666" domain={[0, 100]} />
+                    <Tooltip contentStyle={{ background: '#111', border: '1px solid #333' }} />
+                    <Line type="monotone" dataKey="score" stroke="#9333ea" strokeWidth={2} dot={{ fill: '#9333ea' }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </div>
-            <div className="glass rounded-2xl p-6">
-              <h2 className="text-lg font-semibold text-white mb-4">Skill Breakdown</h2>
-              <ResponsiveContainer width="100%" height={220}>
-                <RadarChart data={radarData}>
-                  <PolarGrid stroke="#333" />
-                  <PolarAngleAxis dataKey="skill" tick={{ fill: '#888', fontSize: 10 }} />
-                  <Radar dataKey="value" stroke="#9333ea" fill="#9333ea" fillOpacity={0.3} />
-                </RadarChart>
-              </ResponsiveContainer>
+            <div className="rounded-2xl p-6 glass">
+              <h2 className="mb-4 text-lg font-semibold text-white">Skill Breakdown</h2>
+              {!hasUploads ? (
+                <p className="py-16 text-center text-sm text-zinc-500">
+                  Skills stay at 0 until your first analysis completes.
+                </p>
+              ) : (
+                <ResponsiveContainer width="100%" height={220}>
+                  <RadarChart data={radarData}>
+                    <PolarGrid stroke="#333" />
+                    <PolarAngleAxis dataKey="skill" tick={{ fill: '#888', fontSize: 10 }} />
+                    <Radar dataKey="value" stroke="#9333ea" fill="#9333ea" fillOpacity={0.3} />
+                  </RadarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
 
-          <RecentAnalysesList analyses={data?.recentAnalyses ?? []} />
+          <RecentAnalysesList
+            analyses={data?.recentAnalyses ?? []}
+            tip={data?.dailyRecommendations?.[0]}
+            signedIn={signedIn}
+            replaysPath={replaysPath}
+          />
         </>
       )}
     </div>
@@ -120,25 +188,31 @@ export function DeadlockDashboard(_props: GamePageProps) {
 
 function RecentAnalysesList({
   analyses,
+  tip,
+  signedIn,
+  replaysPath,
 }: {
   analyses: DashboardData['recentAnalyses'];
+  tip?: DashboardData['dailyRecommendations'][number];
+  signedIn: boolean;
+  replaysPath: string;
 }) {
   const reportBase = useGamePath('replays');
 
   return (
-    <div className="grid lg:grid-cols-2 gap-6">
-      <div className="glass rounded-2xl p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">Recent Analyses</h2>
+    <div className="grid gap-6 lg:grid-cols-2">
+      <div className="rounded-2xl p-6 glass">
+        <h2 className="mb-4 text-lg font-semibold text-white">Recent Analyses</h2>
         {analyses.length ? (
           <div className="space-y-3">
             {analyses.map((a) => (
               <Link
                 key={a.id}
                 href={`${reportBase}/${a.id}/report`}
-                className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors"
+                className="flex items-center justify-between rounded-xl p-3 transition-colors hover:bg-white/5"
               >
                 <div>
-                  <p className="text-white font-medium">{a.hero ?? 'Unknown Hero'}</p>
+                  <p className="font-medium text-white">{a.hero ?? 'Unknown Hero'}</p>
                   <p className="text-xs text-zinc-500">{new Date(a.createdAt).toLocaleDateString()}</p>
                 </div>
                 {a.grade && <span className="text-lg font-bold text-purple-400">{a.grade}</span>}
@@ -146,15 +220,33 @@ function RecentAnalysesList({
             ))}
           </div>
         ) : (
-          <p className="text-zinc-500 text-sm">No analyses yet. Upload your first replay!</p>
+          <p className="text-sm text-zinc-500">No analyses yet. Upload your first replay!</p>
         )}
       </div>
-      <div className="glass rounded-2xl p-6">
-        <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+      <div className="rounded-2xl p-6 glass">
+        <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-white">
           <Sparkles className="h-5 w-5 text-purple-400" />
           Daily Coaching
         </h2>
-        <p className="text-sm text-zinc-400">Upload a replay to receive personalized Deadlock coaching recommendations.</p>
+        <p className="text-sm text-zinc-400">
+          {tip?.description ??
+            'Upload a replay to receive personalized Deadlock coaching recommendations.'}
+        </p>
+        {!signedIn ? (
+          <Link href={`/login?callbackUrl=${encodeURIComponent(replaysPath)}`} className="mt-4 inline-block">
+            <Button variant="outline" size="sm" className="gap-2">
+              <LogIn className="h-4 w-4" />
+              Sign in
+            </Button>
+          </Link>
+        ) : analyses.length === 0 ? (
+          <Link href={replaysPath} className="mt-4 inline-block">
+            <Button variant="outline" size="sm" className="gap-2">
+              <Upload className="h-4 w-4" />
+              Upload replay
+            </Button>
+          </Link>
+        ) : null}
       </div>
     </div>
   );

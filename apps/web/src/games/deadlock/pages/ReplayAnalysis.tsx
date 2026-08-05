@@ -2,10 +2,13 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useSession } from 'next-auth/react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { uploadReplay, apiFetch } from '@/lib/api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, FileVideo, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
+import { Upload, FileVideo, CheckCircle, Loader2, AlertCircle, LogIn } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGamePath } from '@/shared/context/game-context';
 import type { GamePageProps } from '@/games/types';
@@ -14,6 +17,8 @@ type UploadState = 'idle' | 'uploading' | 'processing' | 'complete' | 'error';
 
 export function DeadlockReplayAnalysis(_props: GamePageProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const { data: session, status: authStatus } = useSession();
   const reportPath = useGamePath('replays');
   const [state, setState] = useState<UploadState>('idle');
   const [progress, setProgress] = useState(0);
@@ -25,8 +30,15 @@ export function DeadlockReplayAnalysis(_props: GamePageProps) {
   const [metadata, setMetadata] = useState<Record<string, string> | null>(null);
   const [subjectSteamId, setSubjectSteamId] = useState('');
 
+  const signedIn = authStatus === 'authenticated' && !!session?.user?.id;
+
   const handleFile = useCallback(
     async (file: File) => {
+      if (!signedIn) {
+        setError('Sign in to upload replays and track your progress');
+        setState('error');
+        return;
+      }
       if (!file.name.endsWith('.dem')) {
         setError('Only .dem replay files are supported');
         setState('error');
@@ -48,7 +60,7 @@ export function DeadlockReplayAnalysis(_props: GamePageProps) {
         setState('error');
       }
     },
-    [subjectSteamId]
+    [subjectSteamId, signedIn]
   );
 
   useEffect(() => {
@@ -66,6 +78,7 @@ export function DeadlockReplayAnalysis(_props: GamePageProps) {
         if (status.stage === 'complete') {
           setState('complete');
           clearInterval(poll);
+          void queryClient.invalidateQueries({ queryKey: ['deadlock-dashboard'] });
           const replay = await apiFetch<{
             hero?: string;
             map?: string;
@@ -93,22 +106,60 @@ export function DeadlockReplayAnalysis(_props: GamePageProps) {
       }
     }, 2000);
     return () => clearInterval(poll);
-  }, [state, replayId]);
+  }, [state, replayId, queryClient]);
 
   const onDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       setDragOver(false);
+      if (!signedIn) return;
       const file = e.dataTransfer.files[0];
       if (file) handleFile(file);
     },
-    [handleFile]
+    [handleFile, signedIn]
   );
 
+  if (authStatus === 'loading') {
+    return (
+      <div className="mx-auto max-w-2xl py-20 text-center text-zinc-400">Checking sign-in…</div>
+    );
+  }
+
+  if (!signedIn) {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <h1 className="mb-2 text-3xl font-bold text-white">Replay Analysis</h1>
+        <p className="mb-8 text-zinc-400">Sign in to upload .dem files and track progress from zero.</p>
+        <div className="rounded-2xl border border-purple-500/30 bg-purple-500/10 p-10 text-center glass">
+          <LogIn className="mx-auto mb-4 h-12 w-12 text-purple-400" />
+          <p className="mb-2 text-lg font-medium text-white">Sign in required to upload</p>
+          <p className="mb-6 text-sm text-zinc-400">
+            Your dashboard stats stay at 0 until you upload completed analyses on your account.
+          </p>
+          <div className="flex flex-col justify-center gap-3 sm:flex-row">
+            <Link href={`/login?callbackUrl=${encodeURIComponent(reportPath)}`}>
+              <Button variant="glow" className="w-full gap-2 sm:w-auto">
+                <LogIn className="h-4 w-4" />
+                Log in
+              </Button>
+            </Link>
+            <Link href={`/signup?callbackUrl=${encodeURIComponent(reportPath)}`}>
+              <Button variant="outline" className="w-full sm:w-auto">
+                Create account
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-2xl mx-auto">
-      <h1 className="text-3xl font-bold text-white mb-2">Replay Analysis</h1>
-      <p className="text-zinc-400 mb-8">Upload a Deadlock .dem file for AI coaching</p>
+    <div className="mx-auto max-w-2xl">
+      <h1 className="mb-2 text-3xl font-bold text-white">Replay Analysis</h1>
+      <p className="mb-8 text-zinc-400">
+        Upload a Deadlock .dem file for AI coaching — stats update after each completed analysis
+      </p>
       <AnimatePresence mode="wait">
         {state === 'idle' && (
           <motion.div
@@ -118,8 +169,8 @@ export function DeadlockReplayAnalysis(_props: GamePageProps) {
             exit={{ opacity: 0 }}
             className="space-y-4"
           >
-            <div className="glass rounded-2xl p-4">
-              <label className="block text-sm text-zinc-400 mb-2" htmlFor="subject-steam-id">
+            <div className="rounded-2xl p-4 glass">
+              <label className="mb-2 block text-sm text-zinc-400" htmlFor="subject-steam-id">
                 Your Steam ID (optional)
               </label>
               <input
@@ -140,13 +191,13 @@ export function DeadlockReplayAnalysis(_props: GamePageProps) {
               onDragLeave={() => setDragOver(false)}
               onDrop={onDrop}
               className={cn(
-                'glass rounded-2xl p-12 text-center border-2 border-dashed transition-all cursor-pointer',
+                'cursor-pointer rounded-2xl border-2 border-dashed p-12 text-center transition-all glass',
                 dragOver ? 'border-purple-500 glow-purple' : 'border-white/10 hover:border-purple-500/50'
               )}
               onClick={() => document.getElementById('dl-file-input')?.click()}
             >
-              <Upload className="h-12 w-12 text-purple-400 mx-auto mb-4" />
-              <p className="text-white font-medium mb-2">Drop your .dem replay here</p>
+              <Upload className="mx-auto mb-4 h-12 w-12 text-purple-400" />
+              <p className="mb-2 font-medium text-white">Drop your .dem replay here</p>
               <Button variant="glow">Select Replay File</Button>
               <input
                 id="dl-file-input"
@@ -159,24 +210,27 @@ export function DeadlockReplayAnalysis(_props: GamePageProps) {
           </motion.div>
         )}
         {(state === 'uploading' || state === 'processing') && (
-          <motion.div key="progress" className="glass rounded-2xl p-8">
-            <Loader2 className="h-6 w-6 text-purple-400 animate-spin mb-4" />
-            <div className="w-full bg-zinc-800 rounded-full h-2">
+          <motion.div key="progress" className="rounded-2xl p-8 glass">
+            <Loader2 className="mb-4 h-6 w-6 animate-spin text-purple-400" />
+            <div className="h-2 w-full rounded-full bg-zinc-800">
               <div
-                className="gradient-purple h-2 rounded-full transition-all"
+                className="h-2 rounded-full gradient-purple transition-all"
                 style={{ width: `${state === 'uploading' ? progress : processingProgress}%` }}
               />
             </div>
-            <p className="text-sm text-zinc-400 mt-2">{processingMessage || 'Uploading...'}</p>
+            <p className="mt-2 text-sm text-zinc-400">{processingMessage || 'Uploading...'}</p>
           </motion.div>
         )}
         {state === 'complete' && (
-          <motion.div key="complete" className="glass rounded-2xl p-8">
-            <CheckCircle className="h-8 w-8 text-green-400 mb-4" />
+          <motion.div key="complete" className="rounded-2xl p-8 glass">
+            <CheckCircle className="mb-4 h-8 w-8 text-green-400" />
+            <p className="mb-4 text-sm text-zinc-400">
+              Analysis complete — your dashboard stats have been updated from this upload.
+            </p>
             {metadata && (
-              <div className="grid grid-cols-2 gap-3 mb-6">
+              <div className="mb-6 grid grid-cols-2 gap-3">
                 {Object.entries(metadata).map(([key, val]) => (
-                  <div key={key} className="bg-zinc-900/50 rounded-lg p-3">
+                  <div key={key} className="rounded-lg bg-zinc-900/50 p-3">
                     <p className="text-xs text-zinc-500">{key}</p>
                     <p className="text-sm text-white">{val}</p>
                   </div>
@@ -188,14 +242,14 @@ export function DeadlockReplayAnalysis(_props: GamePageProps) {
               className="w-full"
               onClick={() => router.push(`${reportPath}/${replayId}/report`)}
             >
-              <FileVideo className="h-4 w-4 mr-2" /> View Coaching Report
+              <FileVideo className="mr-2 h-4 w-4" /> View Coaching Report
             </Button>
           </motion.div>
         )}
         {state === 'error' && (
-          <motion.div key="error" className="glass rounded-2xl p-8 text-center">
-            <AlertCircle className="h-10 w-10 text-red-400 mx-auto mb-4" />
-            <p className="text-zinc-400 mb-6">{error}</p>
+          <motion.div key="error" className="rounded-2xl p-8 text-center glass">
+            <AlertCircle className="mx-auto mb-4 h-10 w-10 text-red-400" />
+            <p className="mb-6 text-zinc-400">{error}</p>
             <Button variant="outline" onClick={() => setState('idle')}>
               Try Again
             </Button>

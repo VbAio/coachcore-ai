@@ -94,6 +94,15 @@ export async function processReplayInline(
       },
     });
 
+    const replayRow = await prisma.replay.findUnique({
+      where: { id: replayId },
+      select: { userId: true },
+    });
+    if (replayRow?.userId) {
+      const { recomputeUserStats } = await import('../services/user-stats.js');
+      await recomputeUserStats(replayRow.userId);
+    }
+
     await updateStatus(replayId, 'complete', 100, 'Analysis complete!', 'complete');
     return { replayId, grade: report.overallGrade };
   } catch (error) {

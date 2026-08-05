@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { createCoachProvider } from '@coachcore/ai-coach';
 import type { CoachingReport, ChatCoachMessage } from '@coachcore/shared';
+import { getDashboardStatsForUser } from '../services/user-stats.js';
 
 export const coachRouter = Router();
 
@@ -46,58 +47,14 @@ coachRouter.post('/:replayId/chat', async (req, res) => {
 });
 
 coachRouter.get('/dashboard', async (req, res) => {
-  const userId = req.headers['x-user-id'] as string | undefined;
-  const user = userId
-    ? await prisma.user.findUnique({
-        where: { id: userId },
-        include: {
-          stats: true,
-          replays: { include: { report: true }, orderBy: { createdAt: 'desc' }, take: 10 },
-        },
-      })
-    : null;
-
-  if (!user) {
-    return res.json({
-      success: true,
-      data: {
-        recentAnalyses: [],
-        winRate: 0,
-        avgMistakesPerGame: 0,
-        improvementScore: 0,
-        favoriteHeroes: [],
-        mmrPrediction: 0,
-        dailyRecommendations: [
-          { title: 'Upload your first replay', description: 'Get AI coaching in minutes', category: 'getting_started', priority: 'high' },
-        ],
-      },
+  try {
+    const userId = req.headers['x-user-id'] as string | undefined;
+    const data = await getDashboardStatsForUser(userId);
+    res.json({ success: true, data });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Dashboard failed',
     });
   }
-
-  const completed = user.replays.filter((r) => r.report);
-  const avgScore = completed.length
-    ? completed.reduce((s, r) => s + (r.report?.score ?? 0), 0) / completed.length
-    : 0;
-
-  res.json({
-    success: true,
-    data: {
-      recentAnalyses: user.replays.slice(0, 5).map((r) => ({
-        id: r.id,
-        hero: r.hero,
-        grade: r.report?.grade,
-        createdAt: r.createdAt,
-      })),
-      winRate: user.stats?.winRate ?? 52,
-      avgMistakesPerGame: user.stats?.avgMistakesPerGame ?? 8.4,
-      improvementScore: user.stats?.improvementScore ?? Math.round(avgScore),
-      favoriteHeroes: user.stats?.favoriteHeroes ?? [],
-      mmrPrediction: user.stats?.mmrPrediction ?? Math.round(avgScore * 10),
-      dailyRecommendations: [
-        { title: 'Fix early lane deaths', description: 'Your last 3 replays show awareness gaps before 5 min', category: 'awareness', priority: 'high' },
-        { title: 'Improve GPM', description: 'Reduce idle time between objectives', category: 'economy', priority: 'medium' },
-      ],
-      skillHistory: user.stats?.skillHistory ?? [],
-    },
-  });
 });
