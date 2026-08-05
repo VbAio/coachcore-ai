@@ -1,8 +1,10 @@
 'use client';
 
+import { motion, useReducedMotion } from 'framer-motion';
 import type { MatchSummaryStats } from '@coachcore/shared';
 import { GlassCard } from './ui';
 import { formatClock } from '../vod-review/format';
+import { easeOutSoft } from '@/lib/motion';
 
 export function PerformanceScore({
   score,
@@ -11,16 +13,22 @@ export function PerformanceScore({
   score: number;
   grade: string;
 }) {
+  const reduce = useReducedMotion();
   const r = 54;
   const c = 2 * Math.PI * r;
   const pct = Math.min(100, Math.max(0, score)) / 100;
   const offset = c * (1 - pct);
 
   return (
-    <div className="relative flex h-36 w-36 items-center justify-center">
+    <motion.div
+      className="relative flex h-36 w-36 items-center justify-center"
+      initial={{ scale: 0.9, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ duration: 0.5, ease: easeOutSoft }}
+    >
       <svg className="absolute inset-0 -rotate-90" viewBox="0 0 128 128">
         <circle cx="64" cy="64" r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="8" />
-        <circle
+        <motion.circle
           cx="64"
           cy="64"
           r={r}
@@ -29,8 +37,9 @@ export function PerformanceScore({
           strokeWidth="8"
           strokeLinecap="round"
           strokeDasharray={c}
-          strokeDashoffset={offset}
-          className="transition-[stroke-dashoffset] duration-1000 ease-out"
+          initial={{ strokeDashoffset: c }}
+          animate={{ strokeDashoffset: reduce ? offset : offset }}
+          transition={{ duration: reduce ? 0 : 1.2, ease: easeOutSoft, delay: 0.15 }}
         />
         <defs>
           <linearGradient id="scoreGrad" x1="0" y1="0" x2="1" y2="1">
@@ -40,10 +49,17 @@ export function PerformanceScore({
         </defs>
       </svg>
       <div className="text-center">
-        <div className="text-3xl font-bold text-white">{score}</div>
+        <motion.div
+          className="text-3xl font-bold text-white"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35, duration: 0.4 }}
+        >
+          {score}
+        </motion.div>
         <div className="text-xs font-semibold uppercase tracking-widest text-amber-300">{grade}</div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 

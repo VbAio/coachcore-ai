@@ -6,6 +6,7 @@ import type { Hero } from '@/data/heroes';
 import { DIFFICULTY_COLORS } from '@/data/heroes';
 import { HeroImage } from './hero-image';
 import { cn } from '@/lib/utils';
+import { easeOutSoft, springSoft } from '@/lib/motion';
 
 interface HeroCardProps {
   hero: Hero;
@@ -16,19 +17,23 @@ interface HeroCardProps {
 export function HeroCard({ hero, href, index }: HeroCardProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05, duration: 0.3 }}
+      transition={{ delay: Math.min(index * 0.04, 0.4), duration: 0.4, ease: easeOutSoft }}
+      whileHover={{ y: -6 }}
     >
-      <Link href={href} className="block group">
-        <article className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] shadow-lg shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-purple-500/40 hover:shadow-xl hover:shadow-purple-500/10">
+      <Link href={href} className="group block">
+        <motion.article
+          transition={springSoft}
+          className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] shadow-lg shadow-black/20 transition-colors duration-300 group-hover:border-purple-500/40 group-hover:shadow-xl group-hover:shadow-purple-500/10"
+        >
           <div className="relative aspect-[4/3] overflow-hidden">
             <HeroImage
               src={hero.portrait}
               alt={`${hero.name} portrait`}
               role={hero.role}
               name={hero.name}
-              className="transition-transform duration-500 group-hover:scale-110"
+              className="transition-transform duration-700 ease-out-soft group-hover:scale-110"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
@@ -36,7 +41,7 @@ export function HeroCard({ hero, href, index }: HeroCardProps) {
               <span
                 className={cn(
                   'inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium',
-                  DIFFICULTY_COLORS[hero.difficulty] ?? 'text-zinc-400 bg-zinc-500/10 border-zinc-500/20'
+                  DIFFICULTY_COLORS[hero.difficulty] ?? 'border-zinc-500/20 bg-zinc-500/10 text-zinc-400'
                 )}
               >
                 {hero.difficulty}
@@ -54,7 +59,7 @@ export function HeroCard({ hero, href, index }: HeroCardProps) {
               {hero.description}
             </p>
           </div>
-        </article>
+        </motion.article>
       </Link>
     </motion.div>
   );

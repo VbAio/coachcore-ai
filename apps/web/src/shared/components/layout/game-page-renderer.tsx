@@ -14,6 +14,20 @@ interface GamePageRendererProps {
   slug?: string[];
 }
 
+function PageLoading() {
+  return (
+    <div className="space-y-4 py-10">
+      <div className="h-8 w-48 animate-pulse rounded-lg bg-white/5" />
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="h-40 animate-pulse rounded-2xl bg-white/5 shimmer" />
+        <div className="h-40 animate-pulse rounded-2xl bg-white/5 shimmer" />
+      </div>
+      <div className="h-64 animate-pulse rounded-2xl bg-white/5 shimmer" />
+      <p className="pt-4 text-center text-sm text-zinc-500">Loading page…</p>
+    </div>
+  );
+}
+
 export function GamePageRenderer({
   gameId,
   routePath,
@@ -31,9 +45,7 @@ export function GamePageRenderer({
     return dynamic(
       () => route.load().then((mod) => mod.default),
       {
-        loading: () => (
-          <div className="flex items-center justify-center py-24 text-zinc-400">Loading...</div>
-        ),
+        loading: () => <PageLoading />,
         ssr: false,
       }
     );

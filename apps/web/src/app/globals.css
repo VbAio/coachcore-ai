@@ -20,21 +20,54 @@
     --border: 270 30% 18%;
     --ring: 270 80% 60%;
     --radius: 0.75rem;
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   * {
     @apply border-border;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     background: #000;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
 @layer utilities {
   .glass {
     @apply bg-white/5 backdrop-blur-xl border border-white/10;
+    transition:
+      border-color 0.35s var(--ease-out-soft),
+      background-color 0.35s var(--ease-out-soft),
+      box-shadow 0.35s var(--ease-out-soft),
+      transform 0.35s var(--ease-out-soft);
+  }
+
+  .glass-interactive:hover {
+    border-color: rgba(168, 85, 247, 0.35);
+    background-color: rgba(255, 255, 255, 0.07);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35), 0 0 30px rgba(147, 51, 234, 0.12);
   }
 
   .glow-purple {
@@ -47,5 +80,97 @@
 
   .gradient-purple {
     background: linear-gradient(135deg, #9333ea 0%, #7c3aed 50%, #6366f1 100%);
+  }
+
+  .hover-lift {
+    transition: transform 0.35s var(--ease-out-soft), box-shadow 0.35s var(--ease-out-soft);
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-4px);
+  }
+
+  .link-underline {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    background-size: 0% 1px;
+    transition: background-size 0.35s var(--ease-out-soft), color 0.25s var(--ease-out-soft);
+  }
+
+  .link-underline:hover {
+    background-size: 100% 1px;
+  }
+
+  .shimmer {
+    background: linear-gradient(
+      110deg,
+      transparent 25%,
+      rgba(255, 255, 255, 0.06) 37%,
+      transparent 63%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2.4s linear infinite;
+  }
+
+  .animate-float-slow {
+    animation: float 8s ease-in-out infinite;
+  }
+
+  .animate-float-delayed {
+    animation: float 9s ease-in-out infinite;
+    animation-delay: 1.2s;
+  }
+
+  .animate-gradient-shift {
+    background-size: 200% 200%;
+    animation: gradient-shift 8s ease infinite;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.5s var(--ease-out-soft) both;
+  }
+
+  .animate-slide-up {
+    animation: slide-up 0.55s var(--ease-out-soft) both;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes gradient-shift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

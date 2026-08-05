@@ -1,8 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { FadeIn } from '@/components/motion';
+import { easeOutSoft } from '@/lib/motion';
 
 const faqs = [
   {
@@ -28,36 +31,60 @@ const faqs = [
 ];
 
 export function FAQSection() {
-  const [open, setOpen] = useState<number | null>(null);
+  const [open, setOpen] = useState<number | null>(0);
 
   return (
-    <section id="faq" className="py-24 px-6">
+    <section id="faq" className="px-6 py-24">
       <div className="mx-auto max-w-3xl">
-        <h2 className="text-3xl font-bold text-white text-center mb-12">
-          Frequently Asked Questions
-        </h2>
+        <FadeIn inView>
+          <h2 className="mb-12 text-center text-3xl font-bold text-white">
+            Frequently Asked Questions
+          </h2>
+        </FadeIn>
         <div className="space-y-3">
-          {faqs.map((faq, i) => (
-            <div key={i} className="glass rounded-xl overflow-hidden">
-              <button
-                className="w-full flex items-center justify-between p-5 text-left"
-                onClick={() => setOpen(open === i ? null : i)}
+          {faqs.map((faq, i) => {
+            const isOpen = open === i;
+            return (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.05, duration: 0.4, ease: easeOutSoft }}
+                className="overflow-hidden rounded-xl glass"
               >
-                <span className="font-medium text-white">{faq.q}</span>
-                <ChevronDown
-                  className={cn(
-                    'h-5 w-5 text-purple-400 transition-transform',
-                    open === i && 'rotate-180'
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between p-5 text-left"
+                  onClick={() => setOpen(isOpen ? null : i)}
+                  aria-expanded={isOpen}
+                >
+                  <span className="font-medium text-white">{faq.q}</span>
+                  <motion.span
+                    animate={{ rotate: isOpen ? 180 : 0 }}
+                    transition={{ duration: 0.25 }}
+                  >
+                    <ChevronDown className={cn('h-5 w-5 text-purple-400')} />
+                  </motion.span>
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      key="content"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.28, ease: easeOutSoft }}
+                    >
+                      <div className="px-5 pb-5 text-sm leading-relaxed text-zinc-400">
+                        {faq.a}
+                      </div>
+                    </motion.div>
                   )}
-                />
-              </button>
-              {open === i && (
-                <div className="px-5 pb-5 text-sm text-zinc-400 leading-relaxed">
-                  {faq.a}
-                </div>
-              )}
-            </div>
-          ))}
+                </AnimatePresence>
+              </motion.div>
+            );
+          })}
         </div>
       </div>
     </section>

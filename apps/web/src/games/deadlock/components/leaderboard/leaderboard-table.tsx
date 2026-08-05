@@ -83,7 +83,7 @@ export function LeaderboardTable({
               >
                 <Link
                   href={`${playerPath}/${player.steamId}`}
-                  className={`group flex h-full items-center gap-3 border-b border-white/5 px-4 transition-colors hover:bg-emerald-500/5 lg:grid ${GRID_COLS} lg:gap-3`}
+                  className={`group flex h-full items-center gap-3 border-b border-white/5 px-4 transition-all duration-300 ease-out-soft hover:translate-x-0.5 hover:bg-emerald-500/5 lg:grid ${GRID_COLS} lg:gap-3`}
                 >
                   <div className="flex w-14 shrink-0 items-center gap-1 lg:w-auto">
                     <span className="font-bold text-zinc-300">#{player.rank}</span>

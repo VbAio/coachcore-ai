@@ -4,7 +4,9 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { motion } from 'framer-motion';
 import { Mail } from 'lucide-react';
+import { easeOutSoft } from '@/lib/motion';
 
 const AUTH_PATHS = ['/login', '/signup', '/verify-email', '/forgot-password', '/reset-password'];
 
@@ -32,7 +34,10 @@ export function EmailVerificationBanner() {
   if (!show) return null;
 
   return (
-    <div
+    <motion.div
+      initial={{ y: -44, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.35, ease: easeOutSoft }}
       className="fixed top-0 left-0 right-0 z-[100] flex h-11 items-center justify-center gap-2 border-b border-amber-500/30 bg-amber-950/95 px-4 text-sm backdrop-blur-sm sm:gap-3"
       role="alert"
     >
@@ -47,6 +52,6 @@ export function EmailVerificationBanner() {
       >
         Verify now
       </Link>
-    </div>
+    </motion.div>
   );
 }

@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import type { CoachInsight, CoachingReportPayload } from '@coachcore/shared';
+import { easeOutSoft, fadeUp, staggerContainer } from '@/lib/motion';
 import { adaptReport } from './adapter';
 import { MatchSummary } from './MatchSummary';
 import { AnalysisTimeline, type AnalysisTimelineRow } from './AnalysisTimeline';
@@ -174,9 +176,17 @@ export function PremiumAnalysisShell({ data }: Props) {
   return (
     <div className="relative min-h-screen overflow-hidden">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(251,191,36,0.12),_transparent_50%),radial-gradient(ellipse_at_bottom_right,_rgba(52,211,153,0.08),_transparent_45%)]" />
-      <div className="relative space-y-5 pb-16">
+      <motion.div
+        className="relative space-y-5 pb-16"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="visible"
+      >
         {(confidence !== 'full' || notes.length > 0) && (
-          <div className="flex gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          <motion.div
+            variants={fadeUp}
+            className="flex gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100"
+          >
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
               <p className="font-medium">
@@ -193,12 +203,16 @@ export function PremiumAnalysisShell({ data }: Props) {
                 </ul>
               )}
             </div>
-          </div>
+          </motion.div>
         )}
 
-        {report.matchSummary && <MatchSummary summary={report.matchSummary} />}
+        {report.matchSummary && (
+          <motion.div variants={fadeUp}>
+            <MatchSummary summary={report.matchSummary} />
+          </motion.div>
+        )}
 
-        <div className="grid gap-4 lg:grid-cols-12">
+        <motion.div variants={fadeUp} className="grid gap-4 lg:grid-cols-12">
           <div className="space-y-3 lg:col-span-5">
             <MatchMap
               timeline={timeline}
@@ -240,28 +254,32 @@ export function PremiumAnalysisShell({ data }: Props) {
           <div className="lg:col-span-4">
             <CoachPanel insight={insight} />
           </div>
-        </div>
+        </motion.div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
+        <motion.div
+          variants={fadeUp}
+          transition={{ duration: 0.45, ease: easeOutSoft }}
+          className="grid gap-4 lg:grid-cols-2"
+        >
           <PatternPanel patterns={report.mistakePatterns ?? []} onJump={(time) => jumpTo(time)} />
           {report.aiInsights && <InsightPanel insights={report.aiInsights} />}
-        </div>
+        </motion.div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
+        <motion.div variants={fadeUp} className="grid gap-4 lg:grid-cols-2">
           {report.skillAxisMeta && <SkillRadar axes={report.skillAxisMeta} />}
           <ImprovementPlanPanel plan={report.improvementPlan} />
-        </div>
+        </motion.div>
 
-        <div className="grid gap-4 lg:grid-cols-3">
+        <motion.div variants={fadeUp} className="grid gap-4 lg:grid-cols-3">
           <CategoryDistribution byCategory={report.mistakesByCategory} />
           <MistakeFrequency timeline={report.timeline} />
           <FightParticipation
             fights={report.teamFightAnalysis ?? []}
             onJump={(time) => jumpTo(time)}
           />
-        </div>
+        </motion.div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
+        <motion.div variants={fadeUp} className="grid gap-4 lg:grid-cols-2">
           <HeatmapViewer
             heatmaps={report.heatmaps}
             estimated={report.estimatedSections.includes('heatmaps')}
@@ -271,24 +289,26 @@ export function PremiumAnalysisShell({ data }: Props) {
             report={report}
             onJump={(ins) => jumpTo(ins.timestamp, undefined, ins)}
           />
-        </div>
+        </motion.div>
 
         {purchases.length > 0 && (
-          <GlassCard className="p-4">
-            <ItemsPanel
-              purchases={purchases}
-              review={report.buildReview}
-              t={t}
-              duration={duration}
-              selectedEventId={selectedPurchaseId}
-              onSelectPurchase={(purchase) => {
-                setSelectedPurchaseId(purchase.eventId);
-                jumpTo(purchase.timestamp);
-              }}
-            />
-          </GlassCard>
+          <motion.div variants={fadeUp}>
+            <GlassCard className="p-4">
+              <ItemsPanel
+                purchases={purchases}
+                review={report.buildReview}
+                t={t}
+                duration={duration}
+                selectedEventId={selectedPurchaseId}
+                onSelectPurchase={(purchase) => {
+                  setSelectedPurchaseId(purchase.eventId);
+                  jumpTo(purchase.timestamp);
+                }}
+              />
+            </GlassCard>
+          </motion.div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 }

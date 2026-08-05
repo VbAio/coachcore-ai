@@ -5,6 +5,8 @@ import {
   Brain, Map, Swords, TrendingUp, MessageSquare, BarChart3,
   Crosshair, Clock, Users,
 } from 'lucide-react';
+import { FadeIn, Stagger, StaggerItem } from '@/components/motion';
+import { springSoft } from '@/lib/motion';
 
 const features = [
   { icon: Brain, title: 'AI Coach Engine', desc: 'Every mistake explained — what happened, why, and what to do instead.' },
@@ -20,35 +22,37 @@ const features = [
 
 export function FeaturesSection() {
   return (
-    <section id="features" className="py-24 px-6">
+    <section id="features" className="px-6 py-24">
       <div className="mx-auto max-w-7xl">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+        <FadeIn inView className="mb-16 text-center">
+          <h2 className="mb-4 text-3xl font-bold text-white md:text-4xl">
             Everything a Pro Coach Would Tell You
           </h2>
-          <p className="text-zinc-400 max-w-2xl mx-auto">
+          <p className="mx-auto max-w-2xl text-zinc-400">
             CoachCore AI analyzes every aspect of your gameplay and delivers actionable coaching — not raw statistics.
           </p>
-        </div>
+        </FadeIn>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((feature, i) => (
-            <motion.div
-              key={feature.title}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.05 }}
-              className="glass rounded-2xl p-6 hover:border-purple-500/30 transition-all group"
-            >
-              <div className="h-12 w-12 rounded-xl bg-purple-500/20 flex items-center justify-center mb-4 group-hover:glow-purple transition-all">
-                <feature.icon className="h-6 w-6 text-purple-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-white mb-2">{feature.title}</h3>
-              <p className="text-sm text-zinc-400">{feature.desc}</p>
-            </motion.div>
+        <Stagger className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {features.map((feature) => (
+            <StaggerItem key={feature.title}>
+              <motion.div
+                whileHover={{ y: -6, borderColor: 'rgba(168,85,247,0.35)' }}
+                transition={springSoft}
+                className="group h-full rounded-2xl p-6 glass"
+              >
+                <motion.div
+                  whileHover={{ scale: 1.08, rotate: -4 }}
+                  className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-purple-500/20 transition-shadow group-hover:glow-purple"
+                >
+                  <feature.icon className="h-6 w-6 text-purple-400" />
+                </motion.div>
+                <h3 className="mb-2 text-lg font-semibold text-white">{feature.title}</h3>
+                <p className="text-sm text-zinc-400">{feature.desc}</p>
+              </motion.div>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       </div>
     </section>
   );

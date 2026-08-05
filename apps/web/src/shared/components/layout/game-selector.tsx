@@ -6,6 +6,8 @@ import { getRegisteredGames } from '@/games/registry';
 import { ChevronDown, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { easeOutSoft } from '@/lib/motion';
 
 const GAME_DOTS: Record<string, string> = {
   deadlock: 'from-purple-600 to-indigo-600',
@@ -45,41 +47,69 @@ export function GameSelector({ currentGameId, variant = 'game' }: GameSelectorPr
           'flex items-center gap-2 transition-colors',
           variant === 'platform'
             ? 'text-sm text-zinc-400 hover:text-purple-400'
-            : 'rounded-lg glass border border-white/10 px-3 py-1.5 text-sm text-white hover:border-purple-500/40'
+            : 'rounded-lg border border-white/10 px-3 py-1.5 text-sm text-white glass hover:border-purple-500/40'
         )}
       >
-        <span className={cn('h-2 w-2 rounded-full bg-gradient-to-br', GAME_DOTS[current?.id ?? 'deadlock'])} />
+        <span
+          className={cn(
+            'h-2 w-2 rounded-full bg-gradient-to-br',
+            GAME_DOTS[current?.id ?? 'deadlock']
+          )}
+        />
         <span>{variant === 'platform' ? 'Games' : current?.name}</span>
-        <ChevronDown className={cn('h-3.5 w-3.5 opacity-60', open && 'rotate-180')} />
+        <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
+          <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+        </motion.span>
       </button>
 
-      {open && (
-        <div className="absolute top-full left-0 mt-2 w-56 rounded-xl glass border border-white/10 shadow-xl z-50 overflow-hidden">
-          {games.map((game) => (
-            <Link
-              key={game.id}
-              href={`/${game.id}`}
-              onClick={() => setOpen(false)}
-              className={cn(
-                'flex items-center gap-3 px-4 py-3 text-sm hover:bg-white/5 transition-colors',
-                currentGameId === game.id && 'bg-purple-500/10'
-              )}
-            >
-              <span className={cn('h-2.5 w-2.5 rounded-full bg-gradient-to-br shrink-0', GAME_DOTS[game.id])} />
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-white font-medium">{game.name}</span>
-                  {!game.available && (
-                    <span className="text-[10px] uppercase text-zinc-500 bg-zinc-800 px-1.5 rounded">Soon</span>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: easeOutSoft }}
+            className="absolute left-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-white/10 shadow-xl glass"
+          >
+            {games.map((game, i) => (
+              <motion.div
+                key={game.id}
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.03 }}
+              >
+                <Link
+                  href={`/${game.id}`}
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    'flex items-center gap-3 px-4 py-3 text-sm transition-colors hover:bg-white/5',
+                    currentGameId === game.id && 'bg-purple-500/10'
                   )}
-                </div>
-                <p className="text-xs text-zinc-500">{game.tagline}</p>
-              </div>
-              {!game.available && <Lock className="h-3 w-3 text-zinc-600" />}
-            </Link>
-          ))}
-        </div>
-      )}
+                >
+                  <span
+                    className={cn(
+                      'h-2.5 w-2.5 shrink-0 rounded-full bg-gradient-to-br',
+                      GAME_DOTS[game.id]
+                    )}
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-white">{game.name}</span>
+                      {!game.available && (
+                        <span className="rounded bg-zinc-800 px-1.5 text-[10px] uppercase text-zinc-500">
+                          Soon
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-zinc-500">{game.tagline}</p>
+                  </div>
+                  {!game.available && <Lock className="h-3 w-3 text-zinc-600" />}
+                </Link>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

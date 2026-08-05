@@ -56,9 +56,9 @@ export function AnalysisTimeline({ rows, selectedId, t, onSelect }: Props) {
                 type="button"
                 onClick={() => onSelect(row)}
                 className={cn(
-                  'absolute left-0 right-0 mx-1 flex items-start gap-3 rounded-xl border px-3 py-2 text-left transition',
+                  'absolute left-0 right-0 mx-1 flex items-start gap-3 rounded-xl border px-3 py-2 text-left transition-all duration-300 ease-out-soft',
                   active
-                    ? 'border-amber-400/40 bg-amber-500/15'
+                    ? 'scale-[1.01] border-amber-400/40 bg-amber-500/15 shadow-[0_0_24px_rgba(251,191,36,0.12)]'
                     : near
                       ? 'border-white/15 bg-white/[0.06]'
                       : 'border-transparent hover:border-white/10 hover:bg-white/[0.04]'

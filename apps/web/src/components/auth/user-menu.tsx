@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { useState, useRef, useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   ChevronDown,
   LayoutDashboard,
@@ -11,6 +12,7 @@ import {
   User,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { easeOutSoft, springSnappy } from '@/lib/motion';
 
 export function UserMenu() {
   const { data: session, status } = useSession();
@@ -28,7 +30,7 @@ export function UserMenu() {
   }, []);
 
   if (status === 'loading') {
-    return <div className="h-9 w-24 animate-pulse rounded-lg bg-white/5" />;
+    return <div className="h-9 w-24 animate-pulse rounded-lg bg-white/5 shimmer" />;
   }
 
   if (!session?.user) {
@@ -40,12 +42,14 @@ export function UserMenu() {
         >
           Log in
         </Link>
-        <Link
-          href="/signup"
-          className="rounded-lg gradient-purple px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
-          Sign up
-        </Link>
+        <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} transition={springSnappy}>
+          <Link
+            href="/signup"
+            className="block rounded-lg gradient-purple px-4 py-2 text-sm font-medium text-white"
+          >
+            Sign up
+          </Link>
+        </motion.div>
       </div>
     );
   }
@@ -55,10 +59,12 @@ export function UserMenu() {
 
   return (
     <div className="relative" ref={ref}>
-      <button
+      <motion.button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] py-1.5 pl-1.5 pr-3 transition-colors hover:border-white/20"
+        whileHover={{ borderColor: 'rgba(255,255,255,0.25)' }}
+        whileTap={{ scale: 0.98 }}
+        className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] py-1.5 pl-1.5 pr-3"
       >
         {user.avatar ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -71,36 +77,46 @@ export function UserMenu() {
         <span className="hidden max-w-[120px] truncate text-sm font-medium text-white sm:inline">
           {user.displayName ?? user.username}
         </span>
-        <ChevronDown className={cn('h-4 w-4 text-zinc-500 transition-transform', open && 'rotate-180')} />
-      </button>
+        <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
+          <ChevronDown className="h-4 w-4 text-zinc-500" />
+        </motion.span>
+      </motion.button>
 
-      {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-white/10 bg-zinc-950/95 py-1 shadow-xl backdrop-blur-xl">
-          <div className="border-b border-white/5 px-4 py-3">
-            <p className="truncate text-sm font-medium text-white">{user.displayName}</p>
-            <p className="truncate text-xs text-zinc-500">@{user.username}</p>
-          </div>
-          <MenuLink href="/dashboard" icon={LayoutDashboard} onClick={() => setOpen(false)}>
-            Dashboard
-          </MenuLink>
-          <MenuLink href={`/profile/${user.username}`} icon={User} onClick={() => setOpen(false)}>
-            Profile
-          </MenuLink>
-          <MenuLink href="/settings/account" icon={Settings} onClick={() => setOpen(false)}>
-            Settings
-          </MenuLink>
-          <div className="border-t border-white/5 mt-1 pt-1">
-            <button
-              type="button"
-              onClick={() => signOut({ callbackUrl: '/' })}
-              className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10"
-            >
-              <LogOut className="h-4 w-4" />
-              Log out
-            </button>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: easeOutSoft }}
+            className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-white/10 bg-zinc-950/95 py-1 shadow-xl backdrop-blur-xl"
+          >
+            <div className="border-b border-white/5 px-4 py-3">
+              <p className="truncate text-sm font-medium text-white">{user.displayName}</p>
+              <p className="truncate text-xs text-zinc-500">@{user.username}</p>
+            </div>
+            <MenuLink href="/dashboard" icon={LayoutDashboard} onClick={() => setOpen(false)}>
+              Dashboard
+            </MenuLink>
+            <MenuLink href={`/profile/${user.username}`} icon={User} onClick={() => setOpen(false)}>
+              Profile
+            </MenuLink>
+            <MenuLink href="/settings/account" icon={Settings} onClick={() => setOpen(false)}>
+              Settings
+            </MenuLink>
+            <div className="mt-1 border-t border-white/5 pt-1">
+              <button
+                type="button"
+                onClick={() => signOut({ callbackUrl: '/' })}
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-400 transition-colors hover:bg-red-500/10"
+              >
+                <LogOut className="h-4 w-4" />
+                Log out
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -120,7 +136,7 @@ function MenuLink({
     <Link
       href={href}
       onClick={onClick}
-      className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-300 hover:bg-white/5 hover:text-white"
+      className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-300 transition-colors hover:bg-white/5 hover:text-white"
     >
       <Icon className="h-4 w-4 text-zinc-500" />
       {children}
