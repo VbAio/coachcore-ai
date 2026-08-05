@@ -5,13 +5,12 @@ import { useMemo } from 'react';
 import type { MatchTimeline, MatchTimelineTrack } from '@coachcore/shared';
 import { cn } from '@/lib/utils';
 import {
-  chooseMapBounds,
   interpolateSamples,
+  looksLikeWorldCoords,
+  MIDTOWN_BOUNDS,
   MINIMAP_SRC,
-  pickHorizontalAxes,
   trailSamples,
   worldToMapPercent,
-  type WorldPoint,
 } from './map-coords';
 import { formatClock } from './format';
 
@@ -54,18 +53,9 @@ function resolveTracks(timeline: MatchTimeline | null): MatchTimelineTrack[] {
   }));
 }
 
-function toPlane(
-  sample: TrackSample,
-  axes: 'xy' | 'xz'
-): WorldPoint {
-  if (axes === 'xz') return { x: sample.x, y: sample.z ?? 0 };
-  return { x: sample.x, y: sample.y };
-}
-
 /**
- * If the parser stamped every sample with ~the same match clock (common when
- * game rules clock was unavailable), redistribute times across the match so
- * playback still animates movement.
+ * If the parser stamped every sample with ~the same match clock, redistribute
+ * times across the match so playback still animates (legacy reports only).
  */
 function normalizeSampleTimes(
   samples: Array<{ t: number; x: number; y: number }>,
@@ -96,46 +86,37 @@ export function MatchMap({
 
   const tracks = useMemo(() => resolveTracks(timeline), [timeline]);
 
-  const axes = useMemo(() => {
-    const all = tracks.flatMap((tr) => tr.samples);
-    return pickHorizontalAxes(all);
-  }, [tracks]);
-
   const planeTracks = useMemo(() => {
-    return tracks.map((tr) => {
-      const mapped = tr.samples.map((s) => {
-        const p = toPlane(s, axes);
-        return { t: s.t, x: p.x, y: p.y };
-      });
-      return {
-        playerId: tr.playerId,
-        samples: normalizeSampleTimes(mapped, duration),
-      };
-    });
-  }, [tracks, axes, duration]);
+    return tracks.map((tr) => ({
+      playerId: tr.playerId,
+      // Deadlock ground plane is XY (Z is height) — same as deadlock-api-assets
+      samples: normalizeSampleTimes(
+        tr.samples.map((s) => ({ t: s.t, x: s.x, y: s.y })),
+        duration
+      ),
+    }));
+  }, [tracks, duration]);
 
-  const bounds = useMemo(() => {
-    const pts: WorldPoint[] = [];
-    for (const tr of planeTracks) {
-      for (const s of tr.samples) pts.push({ x: s.x, y: s.y });
-    }
-    if (marker) pts.push(marker);
-    return chooseMapBounds(pts);
-  }, [planeTracks, marker]);
+  const allSamples = useMemo(
+    () => planeTracks.flatMap((tr) => tr.samples),
+    [planeTracks]
+  );
+  const coordsOk = looksLikeWorldCoords(allSamples);
 
   const rendered = useMemo(() => {
+    if (!coordsOk) return [];
     return planeTracks
       .map((track) => {
         const pos = interpolateSamples(track.samples, t);
         if (!pos) return null;
-        const { cx, cy } = worldToMapPercent(pos.x, pos.y, bounds);
+        const { cx, cy } = worldToMapPercent(pos.x, pos.y, MIDTOWN_BOUNDS);
         const player = players.find((p) => p.steamId === track.playerId);
         const isSubject = track.playerId === subjectId;
         const highlighted = highlightPlayerIds.includes(track.playerId);
         const ally = player?.team === subjectTeam;
         const trail = isSubject
           ? trailSamples(track.samples, t).map((p) =>
-              worldToMapPercent(p.x, p.y, bounds)
+              worldToMapPercent(p.x, p.y, MIDTOWN_BOUNDS)
             )
           : [];
         return {
@@ -159,10 +140,11 @@ export function MatchMap({
       name: string;
       trail: Array<{ cx: number; cy: number }>;
     }>;
-  }, [planeTracks, t, players, subjectId, subjectTeam, highlightPlayerIds, bounds]);
+  }, [planeTracks, t, players, subjectId, subjectTeam, highlightPlayerIds, coordsOk]);
 
-  const markerPct = marker ? worldToMapPercent(marker.x, marker.y, bounds) : null;
-  const sampleCount = planeTracks.reduce((n, tr) => n + tr.samples.length, 0);
+  const markerPct =
+    marker && coordsOk ? worldToMapPercent(marker.x, marker.y, MIDTOWN_BOUNDS) : null;
+  const sampleCount = allSamples.length;
   const hasMotion = rendered.length > 0;
 
   return (
@@ -186,7 +168,6 @@ export function MatchMap({
         }}
       />
 
-      {/* Trail canvas (SVG) */}
       <svg
         viewBox="0 0 100 100"
         className="pointer-events-none absolute inset-0 z-[2] h-full w-full"
@@ -213,7 +194,6 @@ export function MatchMap({
           ))}
       </svg>
 
-      {/* HTML markers — always above Next/Image */}
       <div className="absolute inset-0 z-[3]">
         {rendered.map((p) => {
           const color = p.isSubject ? '#fbbf24' : p.ally ? '#38bdf8' : '#f43f5e';
@@ -274,9 +254,10 @@ export function MatchMap({
       </div>
 
       {!hasMotion && (
-        <div className="absolute inset-0 z-[4] flex items-center justify-center bg-black/45 px-4 text-center text-xs text-zinc-200 backdrop-blur-[1px]">
-          No movement data in this report. Re-upload the .dem after the latest API deploy so
-          positions can be extracted.
+        <div className="absolute inset-0 z-[4] flex items-center justify-center bg-black/55 px-4 text-center text-xs text-zinc-100 backdrop-blur-[1px]">
+          {sampleCount > 0 && !coordsOk
+            ? 'This report has invalid map coordinates (cell offsets, not world space). Re-upload the .dem after the latest API deploy to rebuild positions.'
+            : 'No movement data in this report. Re-upload the .dem after the latest API deploy so positions can be extracted.'}
         </div>
       )}
 

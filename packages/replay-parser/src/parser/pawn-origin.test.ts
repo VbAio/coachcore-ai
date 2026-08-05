@@ -1,41 +1,64 @@
 import { describe, it, expect } from 'vitest';
+import { CELL_SIZE, WORLD_HALF, cellToWorld, readPawnOrigin } from './pawn-origin.js';
 
-// Mirror the field-path strategy used in deadem-extract (keep in sync if paths change)
-function readPawnOrigin(pawn: { getField: (k: string) => unknown }): {
-  x: number;
-  y: number;
-  z: number;
-} | null {
-  const x = pawn.getField('CBodyComponent.m_skeletonInstance.m_vecOrigin.m_vecX');
-  const y = pawn.getField('CBodyComponent.m_skeletonInstance.m_vecOrigin.m_vecY');
-  const z = pawn.getField('CBodyComponent.m_skeletonInstance.m_vecOrigin.m_vecZ');
-  if (typeof x === 'number' && typeof y === 'number') {
-    return { x, y, z: typeof z === 'number' ? z : 0 };
-  }
-  return null;
-}
+describe('cellToWorld', () => {
+  it('matches Source 2 / boon-deadlock constants', () => {
+    expect(CELL_SIZE).toBe(512);
+    expect(WORLD_HALF).toBe(16384);
+    expect(cellToWorld(32, 0)).toBe(0);
+    expect(cellToWorld(32, 256)).toBe(256);
+    expect(cellToWorld(0, 0)).toBe(-WORLD_HALF);
+  });
+});
 
-describe('Deadlock pawn origin fields', () => {
-  it('reads skeletonInstance vecOrigin components', () => {
+describe('readPawnOrigin', () => {
+  it('combines cell index with in-cell offset into world coords', () => {
     const pawn = {
       getField: (k: string) => {
         const map: Record<string, number> = {
-          'CBodyComponent.m_skeletonInstance.m_vecOrigin.m_vecX': 1200,
-          'CBodyComponent.m_skeletonInstance.m_vecOrigin.m_vecY': -400,
+          'CBodyComponent.m_cellX': 32,
+          'CBodyComponent.m_cellY': 30,
+          'CBodyComponent.m_cellZ': 35,
+          'CBodyComponent.m_skeletonInstance.m_vecOrigin.m_vecX': 120,
+          'CBodyComponent.m_skeletonInstance.m_vecOrigin.m_vecY': 400,
           'CBodyComponent.m_skeletonInstance.m_vecOrigin.m_vecZ': 64,
         };
         return map[k];
       },
     };
-    expect(readPawnOrigin(pawn)).toEqual({ x: 1200, y: -400, z: 64 });
+    // world = cell * 512 - 16384 + offset
+    expect(readPawnOrigin(pawn)).toEqual({
+      x: 32 * 512 - 16384 + 120, // 120
+      y: 30 * 512 - 16384 + 400, // -1624
+      z: 35 * 512 - 16384 + 64, // 1600
+    });
   });
 
-  it('returns null when abs-origin-only (legacy) is missing skeleton paths', () => {
+  it('rejects in-cell offsets when cell indices are missing', () => {
     const pawn = {
-      getField: (k: string) => (k === 'm_vecAbsOrigin' ? { x: 1, y: 2, z: 3 } : undefined),
+      getField: (k: string) => {
+        const map: Record<string, number> = {
+          'CBodyComponent.m_skeletonInstance.m_vecOrigin.m_vecX': 120,
+          'CBodyComponent.m_skeletonInstance.m_vecOrigin.m_vecY': 400,
+          'CBodyComponent.m_skeletonInstance.m_vecOrigin.m_vecZ': 64,
+        };
+        return map[k];
+      },
     };
-    // This unit test documents that skeleton paths are required for the primary path;
-    // full fallback coverage lives in deadem-extract.readPawnOrigin.
     expect(readPawnOrigin(pawn)).toBeNull();
+  });
+
+  it('accepts already-absolute coords when cells are missing', () => {
+    const pawn = {
+      getField: (k: string) => {
+        const map: Record<string, number> = {
+          'CBodyComponent.m_skeletonInstance.m_vecOrigin.m_vecX': 2400,
+          'CBodyComponent.m_skeletonInstance.m_vecOrigin.m_vecY': -4100,
+          'CBodyComponent.m_skeletonInstance.m_vecOrigin.m_vecZ': 1504,
+        };
+        return map[k];
+      },
+    };
+    expect(readPawnOrigin(pawn)).toEqual({ x: 2400, y: -4100, z: 1504 });
   });
 });

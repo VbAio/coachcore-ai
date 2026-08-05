@@ -1,4 +1,4 @@
-/** Deadlock world map radius (game units). Origin is map center. */
+/** Deadlock Midtown world map radius (Hammer units). Origin is map center. */
 export const MAP_RADIUS = 10752;
 
 export const MINIMAP_SRC = '/maps/deadlock-minimap.png';
@@ -15,16 +15,21 @@ export interface MapBounds {
   maxY: number;
 }
 
-/** Project world XY → percentage of the circular minimap (0–100, top-left origin). */
+export const MIDTOWN_BOUNDS: MapBounds = {
+  minX: -MAP_RADIUS,
+  maxX: MAP_RADIUS,
+  minY: -MAP_RADIUS,
+  maxY: MAP_RADIUS,
+};
+
+/**
+ * Project world XY → percentage of the circular minimap (0–100, top-left origin).
+ * Matches deadlock-api-assets draw_minimap extent=(-R,R,-R,R) with +Y up.
+ */
 export function worldToMapPercent(
   x: number,
   y: number,
-  bounds: MapBounds = {
-    minX: -MAP_RADIUS,
-    maxX: MAP_RADIUS,
-    minY: -MAP_RADIUS,
-    maxY: MAP_RADIUS,
-  }
+  bounds: MapBounds = MIDTOWN_BOUNDS
 ): { cx: number; cy: number } {
   const w = bounds.maxX - bounds.minX || 1;
   const h = bounds.maxY - bounds.minY || 1;
@@ -34,66 +39,6 @@ export function worldToMapPercent(
   return {
     cx: Math.min(100, Math.max(0, cx)),
     cy: Math.min(100, Math.max(0, cy)),
-  };
-}
-
-/**
- * Choose projection bounds.
- * Prefer real map radius when samples look like Midtown world coords;
- * otherwise fit to data so dots still move visibly.
- */
-export function chooseMapBounds(points: WorldPoint[]): MapBounds {
-  const fixed: MapBounds = {
-    minX: -MAP_RADIUS,
-    maxX: MAP_RADIUS,
-    minY: -MAP_RADIUS,
-    maxY: MAP_RADIUS,
-  };
-  if (points.length === 0) return fixed;
-
-  let minX = Infinity,
-    maxX = -Infinity,
-    minY = Infinity,
-    maxY = -Infinity;
-  for (const p of points) {
-    minX = Math.min(minX, p.x);
-    maxX = Math.max(maxX, p.x);
-    minY = Math.min(minY, p.y);
-    maxY = Math.max(maxY, p.y);
-  }
-
-  const spanX = maxX - minX;
-  const spanY = maxY - minY;
-  const maxAbs = Math.max(
-    Math.abs(minX),
-    Math.abs(maxX),
-    Math.abs(minY),
-    Math.abs(maxY)
-  );
-
-  // Looks like real Deadlock world space (thousands of units)
-  const looksLikeWorld =
-    maxAbs > 500 && maxAbs < MAP_RADIUS * 1.6 && (spanX > 200 || spanY > 200);
-
-  if (looksLikeWorld) return fixed;
-
-  // Fit-to-data (unknown scale / sparse parse) with padding
-  const padX = Math.max(spanX * 0.15, 50);
-  const padY = Math.max(spanY * 0.15, 50);
-  // Avoid zero-size bounds
-  if (spanX < 1 && spanY < 1) {
-    return {
-      minX: minX - 500,
-      maxX: maxX + 500,
-      minY: minY - 500,
-      maxY: maxY + 500,
-    };
-  }
-  return {
-    minX: minX - padX,
-    maxX: maxX + padX,
-    minY: minY - padY,
-    maxY: maxY + padY,
   };
 }
 
@@ -108,9 +53,10 @@ export function interpolateSamples(
   time: number
 ): WorldPoint | null {
   if (!samples || samples.length === 0) return null;
-  const sorted = samples[0].t <= samples[samples.length - 1].t
-    ? samples
-    : [...samples].sort((a, b) => a.t - b.t);
+  const sorted =
+    samples[0].t <= samples[samples.length - 1].t
+      ? samples
+      : [...samples].sort((a, b) => a.t - b.t);
 
   if (time <= sorted[0].t) return { x: sorted[0].x, y: sorted[0].y };
   const last = sorted[sorted.length - 1];
@@ -140,9 +86,10 @@ export function trailSamples(
   maxPoints = 24
 ): WorldPoint[] {
   if (!samples?.length) return [];
-  const sorted = samples[0].t <= samples[samples.length - 1].t
-    ? samples
-    : [...samples].sort((a, b) => a.t - b.t);
+  const sorted =
+    samples[0].t <= samples[samples.length - 1].t
+      ? samples
+      : [...samples].sort((a, b) => a.t - b.t);
   const start = time - lookbackSec;
   const pts: WorldPoint[] = [];
   for (const s of sorted) {
@@ -159,27 +106,29 @@ export function trailSamples(
   return out;
 }
 
-/** Also try X/Z as the ground plane (some dem dumps store height in Y). */
-export function pickHorizontalAxes(
-  samples: Array<{ t: number; x: number; y: number; z?: number }>
-): 'xy' | 'xz' {
-  if (samples.length < 2) return 'xy';
+/**
+ * True when samples look like Midtown world space (thousands of Hammer units),
+ * not Source 2 in-cell offsets (~0–512) that were stored by older parser builds.
+ */
+export function looksLikeWorldCoords(
+  samples: Array<{ x: number; y: number; z?: number }>
+): boolean {
+  if (samples.length === 0) return false;
+  let maxAbs = 0;
+  let spanX = 0;
   let spanY = 0;
-  let spanZ = 0;
-  let minY = Infinity,
-    maxY = -Infinity,
-    minZ = Infinity,
-    maxZ = -Infinity;
+  let minX = Infinity,
+    maxX = -Infinity,
+    minY = Infinity,
+    maxY = -Infinity;
   for (const s of samples) {
+    maxAbs = Math.max(maxAbs, Math.abs(s.x), Math.abs(s.y), Math.abs(s.z ?? 0));
+    minX = Math.min(minX, s.x);
+    maxX = Math.max(maxX, s.x);
     minY = Math.min(minY, s.y);
     maxY = Math.max(maxY, s.y);
-    const z = s.z ?? 0;
-    minZ = Math.min(minZ, z);
-    maxZ = Math.max(maxZ, z);
   }
+  spanX = maxX - minX;
   spanY = maxY - minY;
-  spanZ = maxZ - minZ;
-  // If Y barely changes but Z spans the map, use XZ
-  if (spanZ > spanY * 3 && spanZ > 400) return 'xz';
-  return 'xy';
+  return maxAbs > 800 && (spanX > 200 || spanY > 200 || samples.length < 3);
 }
