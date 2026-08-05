@@ -2,6 +2,7 @@ export * from './coach/coach-provider.interface.js';
 export * from './coach/mock-coach-provider.js';
 export * from './coach/openai-coach-provider.js';
 export * from './modules/mistake-detector.js';
+export * from './modules/pattern-grouper.js';
 export * from './modules/timeline-generator.js';
 export * from './modules/heatmap-generator.js';
 export * from './modules/score-engine.js';

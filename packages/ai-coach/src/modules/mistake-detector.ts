@@ -17,7 +17,32 @@ const VAGUE_BANNED = [
   'be more careful',
   'improve your gameplay',
   'just farm',
+  'farm more',
+  'position better',
+  'rotate earlier',
+  'be less greedy',
 ];
+
+const SEVERITY_SCORE: Record<string, number> = {
+  critical: 95,
+  game_losing: 98,
+  high: 80,
+  major: 78,
+  medium: 55,
+  low: 30,
+  minor: 20,
+};
+
+const HERO_TIPS: Record<string, string> = {
+  haze: 'On Haze, only re-engage after Sleep Dagger is available or you have fog cover — your DPS requires uninterrupted channel time.',
+  infernus: 'On Infernus, flame trail should cut escape routes before you commit body; do not chase through unlit corners.',
+  wraith: 'On Wraith, cards are your engage tax — never walk into a 1v2 without a card ready to reset spacing.',
+  dynamo: 'On Dynamo, Singularity is a conversion tool after numbers advantage, not an opener into fog.',
+  bebop: 'On Bebop, hook only when a teammate can confirm — failed hooks are death timers.',
+  seven: 'On Seven, storm placement should deny the retreat path; standing in your own storm to chase is a common throw.',
+  vindicta: 'On Vindicta, stake first, then take the off-angle — committing without stake burns your only peel.',
+  abrams: 'On Abrams, charge is a gap-close after enemies burn mobility, not a blind engage into full HP backline.',
+};
 
 /**
  * Event-driven moment detector. Every non-estimate insight must cite relatedEventIds.
@@ -43,6 +68,9 @@ export function detectMistakes(
     return 'late';
   };
 
+  const subjectHero =
+    replay.metadata.players.find((p) => p.isSubject)?.hero?.toLowerCase() ?? '';
+
   const add = (
     partial: Omit<DetectedMistake, 'id'> & { timestamp: number; id?: string }
   ) => {
@@ -55,7 +83,7 @@ export function detectMistakes(
       .toLowerCase();
     for (const banned of VAGUE_BANNED) {
       if (text.includes(banned) && !partial.isEstimate) {
-        partial.howToImprove = `${partial.howToImprove} Review the exact timestamp and name the information you missed.`;
+        partial.howToImprove = `${partial.howToImprove} At ${formatClock(partial.timestamp)}, name the exact info gap (enemy IDs, cooldowns, or wave state) you missed.`;
         break;
       }
     }
@@ -63,8 +91,48 @@ export function detectMistakes(
       // Refuse orphan non-estimate insights
       return;
     }
+
+    const severityScore = partial.severityScore ?? SEVERITY_SCORE[partial.severity] ?? 50;
+    const wp =
+      partial.winProbabilityDelta ??
+      partial.impactEstimate?.winProbabilityDelta;
+    const difficulty =
+      partial.difficulty ??
+      (severityScore >= 80 ? 8 : severityScore >= 55 ? 6 : 4);
+
+    const heroTip =
+      partial.heroSpecificAdvice ??
+      Object.entries(HERO_TIPS).find(([k]) => subjectHero.includes(k))?.[1];
+
+    const practiceDrill =
+      partial.practiceDrill ??
+      ({
+        title: `${partial.category.replace(/_/g, ' ')} drill @ ${formatClock(partial.timestamp)}`,
+        description:
+          partial.drills[0] ??
+          `Replay from ${formatClock(Math.max(0, partial.timestamp - 15))} and execute the alternative play written above.`,
+        durationMinutes: severityScore >= 80 ? 20 : 12,
+        difficulty: (difficulty >= 7 ? 'hard' : difficulty >= 5 ? 'medium' : 'easy') as
+          | 'easy'
+          | 'medium'
+          | 'hard',
+        successMetric: `Complete 3 clean reps without repeating the failure mode from ${formatClock(partial.timestamp)}.`,
+      });
+
     const { id: explicitId, ...rest } = partial;
-    moments.push({ ...rest, id: explicitId ?? `moment-${id++}` });
+    moments.push({
+      ...rest,
+      id: explicitId ?? `moment-${id++}`,
+      severityScore,
+      difficulty,
+      winProbabilityDelta: wp,
+      practiceDrill,
+      heroSpecificAdvice: heroTip,
+      isCommonMistake: partial.isCommonMistake ?? partial.polarity === 'mistake',
+      replayContext:
+        partial.replayContext ??
+        `${partial.polarity ?? 'neutral'} · ${partial.category.replace(/_/g, ' ')} · ${formatClock(partial.timestamp)}`,
+    });
   };
 
   const subjectDeaths = replay.events.filter(

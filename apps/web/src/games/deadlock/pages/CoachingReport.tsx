@@ -4,13 +4,13 @@ import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
 import type { CoachingReport, CoachingReportPayload, MatchTimeline } from '@coachcore/shared';
 import type { GamePageProps } from '@/games/types';
-import { VodReviewShell } from '../components/vod-review/VodReviewShell';
+import { PremiumAnalysisShell } from '../components/analysis/PremiumAnalysisShell';
+import { AnalysisSkeleton } from '../components/analysis/AnalysisSkeleton';
 
 function normalizePayload(raw: unknown): CoachingReportPayload | null {
   if (!raw || typeof raw !== 'object') return null;
   const obj = raw as Record<string, unknown>;
 
-  // New shape: { report, timeline }
   if (obj.report && typeof obj.report === 'object') {
     return {
       report: obj.report as CoachingReport,
@@ -18,7 +18,6 @@ function normalizePayload(raw: unknown): CoachingReportPayload | null {
     };
   }
 
-  // Legacy: API returned CoachingReport directly
   if ('overallGrade' in obj && 'skillScores' in obj) {
     return { report: obj as unknown as CoachingReport, timeline: null };
   }
@@ -44,7 +43,9 @@ export function DeadlockCoachingReport({ params }: GamePageProps) {
 
   if (isLoading) {
     return (
-      <div className="py-20 text-center text-zinc-400">Loading match review…</div>
+      <div className="py-6">
+        <AnalysisSkeleton />
+      </div>
     );
   }
   if (error || !data) {
@@ -55,5 +56,5 @@ export function DeadlockCoachingReport({ params }: GamePageProps) {
     );
   }
 
-  return <VodReviewShell data={data} />;
+  return <PremiumAnalysisShell data={data} />;
 }

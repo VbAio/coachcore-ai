@@ -26,6 +26,8 @@ export type MistakeCategory =
 
 export type MatchPhase = 'laning' | 'mid' | 'late';
 
+export type DrillDifficulty = 'easy' | 'medium' | 'hard';
+
 export interface ImpactEstimate {
   /** Short human label, e.g. "tempo loss" */
   label: string;
@@ -33,6 +35,14 @@ export interface ImpactEstimate {
   winProbabilityDelta?: number;
   /** Optional MMR hint; always treat as estimate */
   mmrDelta?: number;
+}
+
+export interface PracticeDrill {
+  title: string;
+  description: string;
+  durationMinutes: number;
+  difficulty: DrillDifficulty;
+  successMetric: string;
 }
 
 export interface CoachInsight {
@@ -61,6 +71,34 @@ export interface CoachInsight {
   phase?: MatchPhase;
   /** 'mistake' | 'excellent' | 'neutral' for timeline filters */
   polarity?: 'mistake' | 'excellent' | 'neutral';
+  /** 1–10 how hard the correct decision is under pressure */
+  difficulty?: number;
+  /** Structured practice drill (preferred over free-text drills[]) */
+  practiceDrill?: PracticeDrill;
+  /** Explicit WP swing for this moment (estimate) */
+  winProbabilityDelta?: number;
+  /** Severity 0–100 for sorting / UI meters */
+  severityScore?: number;
+  isCommonMistake?: boolean;
+  heroSpecificAdvice?: string;
+  /** Short category label for timeline chips */
+  replayContext?: string;
+}
+
+export interface MistakePattern {
+  id: string;
+  title: string;
+  category: MistakeCategory;
+  count: number;
+  timestamps: number[];
+  insightIds: string[];
+  commonCauses: string[];
+  patternExplanation: string;
+  practiceDrill: PracticeDrill;
+  priorityScore: number;
+  expectedImprovement: string;
+  estimatedWinProbabilityGain?: number;
+  severity: MistakeSeverity;
 }
 
 export interface TeamFightBreakdown {
@@ -81,8 +119,17 @@ export interface TeamFightBreakdown {
 }
 
 export interface HeatmapData {
-  type: 'movement' | 'deaths' | 'farming' | 'objective' | 'danger' | 'safe_zones' | 'roaming';
-  points: Array<{ x: number; y: number; weight: number }>;
+  type:
+    | 'movement'
+    | 'deaths'
+    | 'kills'
+    | 'farming'
+    | 'objective'
+    | 'danger'
+    | 'safe_zones'
+    | 'roaming'
+    | 'rotations';
+  points: Array<{ x: number; y: number; weight: number; t?: number; label?: string }>;
   mapName: string;
 }
 
@@ -96,6 +143,33 @@ export interface SkillScores {
   aggression: number;
   teamFighting: number;
   overall: number;
+  /** Extended axes (optional for legacy reports) */
+  decisionMaking?: number;
+  micro?: number;
+  abilityUsage?: number;
+  itemization?: number;
+  objectives?: number;
+  mapControl?: number;
+  rotations?: number;
+  discipline?: number;
+}
+
+export interface SkillAxisMeta {
+  key: keyof SkillScores;
+  label: string;
+  score: number;
+  trend: 'up' | 'down' | 'flat';
+  isStrength: boolean;
+  isWeakness: boolean;
+  importance: 'critical' | 'high' | 'medium' | 'low';
+}
+
+export interface ImprovementGoal {
+  title: string;
+  reason: string;
+  expectedImpact: string;
+  difficulty: DrillDifficulty;
+  progressHint: string;
 }
 
 export interface ImprovementPlan {
@@ -107,6 +181,11 @@ export interface ImprovementPlan {
   replayReviewChecklist: string[];
   goalForNextMatch: string;
   estimatedMmrGain: number;
+  /** Structured roadmap (v2) */
+  today?: ImprovementGoal;
+  thisWeek?: ImprovementGoal;
+  nextTenMatches?: ImprovementGoal;
+  longTerm?: ImprovementGoal;
 }
 
 export interface ProComparison {
@@ -116,6 +195,39 @@ export interface ProComparison {
   percentile: number;
   unit: string;
   isEstimate: boolean;
+}
+
+export interface AiInsights {
+  biggestStrengths: string[];
+  mostCostlyMistakes: string[];
+  hiddenPatterns: string[];
+  recurringHabits: string[];
+  mostImprovedArea: string;
+  highestImpactImprovement: string;
+  biggestLostOpportunity: string;
+  riskAssessment: string;
+  confidenceSummary: string;
+}
+
+export interface MatchSummaryStats {
+  hero: string;
+  durationSeconds: number;
+  kills: number;
+  deaths: number;
+  assists: number;
+  /** Hero damage when available; else 0 */
+  damage: number;
+  healing: number;
+  objectiveScore: number;
+  teamFightScore: number;
+  confidence: number;
+  letterGrade: Grade;
+  overallScore: number;
+  currentSkillRating: string;
+  estimatedRank: string;
+  biggestStrength: string;
+  biggestWeakness: string;
+  topPriorities: [string, string, string];
 }
 
 export interface ItemPurchaseAnalysis {
@@ -199,6 +311,14 @@ export interface CoachingReport {
   extractionConfidence?: 'full' | 'partial' | 'minimal';
   /** Notes from the .dem parser (gaps, subject selection, fallbacks) */
   parserNotes?: string[];
+  /** Grouped repeated mistake patterns (v2) */
+  mistakePatterns?: MistakePattern[];
+  /** Narrative AI insights block (v2) */
+  aiInsights?: AiInsights;
+  /** Header KPI summary (v2) */
+  matchSummary?: MatchSummaryStats;
+  /** Per-axis skill metadata for radar UI */
+  skillAxisMeta?: SkillAxisMeta[];
 }
 
 /** API payload for the VOD review page */
