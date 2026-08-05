@@ -1,5 +1,8 @@
-export { DeadlockBuildsPage } from './Stubs';
-export { DeadlockGuidesPage } from './Stubs';
-export { DeadlockMapsPage } from './Stubs';
-export { DeadlockLeaderboardsPage } from './Stubs';
-export { DeadlockSettingsPage } from './Stubs';
+'use client';
+
+import type { GamePageProps } from '@/games/types';
+import { BuildLibrary } from '../components/builds/BuildLibrary';
+
+export function DeadlockBuildsPage(_props: GamePageProps) {
+  return <BuildLibrary />;
+}

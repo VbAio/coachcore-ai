@@ -1,9 +1,6 @@
 import { ComingSoonPage } from '@/shared/components/coming-soon-page';
 import type { GamePageProps } from '@/games/types';
 
-export function DeadlockBuildsPage(_p: GamePageProps) {
-  return <ComingSoonPage feature="Builds" />;
-}
 export function DeadlockGuidesPage(_p: GamePageProps) {
   return <ComingSoonPage feature="Guides" />;
 }
