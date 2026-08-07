@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { RlLeaderboardPlaylist } from '@coachcore/shared';
 import {
   fetchLeaderboard,
   fetchPlayerProfile,
@@ -7,8 +8,25 @@ import {
   type LeaderboardRegion,
   type LeaderboardSortField,
 } from '../services/leaderboard/index.js';
+import { fetchRlLeaderboard } from '../services/rl-leaderboard/provider.js';
 
 export const leaderboardsRouter = Router();
+
+leaderboardsRouter.get('/rocket-league', async (req, res) => {
+  try {
+    const raw = String(req.query.playlist ?? '2v2');
+    const playlist: RlLeaderboardPlaylist =
+      raw === '1v1' || raw === '2v2' || raw === '3v3' ? raw : '2v2';
+    const data = await fetchRlLeaderboard(playlist);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('[leaderboards] GET /rocket-league error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch Rocket League leaderboard',
+    });
+  }
+});
 
 leaderboardsRouter.get('/deadlock', async (req, res) => {
   try {
