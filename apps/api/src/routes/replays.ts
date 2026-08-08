@@ -39,10 +39,11 @@ const upload = multer({
   storage: diskStorage,
   limits: { fileSize: getMaxReplayBytes() },
   fileFilter: (_req, file, cb) => {
-    if (path.extname(file.originalname).toLowerCase() === '.dem') {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (ext === '.dem' || ext === '.replay') {
       cb(null, true);
     } else {
-      cb(new Error('Only .dem replay files are allowed'));
+      cb(new Error('Only .dem or .replay replay files are allowed'));
     }
   },
 });
@@ -97,6 +98,9 @@ replayRouter.post('/upload', uploadMiddleware, async (req, res) => {
     const storageKey = makeReplayStorageKey(user.id, req.file.originalname);
     await putReplayFile(storageKey, req.file.path);
 
+    const ext = path.extname(req.file.originalname).toLowerCase();
+    const game = ext === '.replay' ? 'rocket-league' : 'deadlock';
+
     const replay = await prisma.replay.create({
       data: {
         userId: user.id,
@@ -105,6 +109,7 @@ replayRouter.post('/upload', uploadMiddleware, async (req, res) => {
         fileSize: req.file.size,
         status: 'queued',
         stage: 'queued',
+        metadata: { game },
       },
     });
 
@@ -208,11 +213,19 @@ replayRouter.get('/:id/report', async (req, res) => {
     return res.status(404).json({ success: false, error: 'Report not ready' });
   }
 
+  const meta = replay.metadata as { game?: string } | null;
+  const reportObj = replay.report.report as { game?: string } | null;
+  const game =
+    meta?.game ??
+    reportObj?.game ??
+    (replay.fileName.toLowerCase().endsWith('.replay') ? 'rocket-league' : 'deadlock');
+
   res.json({
     success: true,
     data: {
       report: replay.report.report,
       timeline: replay.timeline ?? null,
+      game,
     },
   });
 });

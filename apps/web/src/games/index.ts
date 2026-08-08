@@ -2,12 +2,8 @@ import { registerGame } from './registry';
 import { deadlockModule } from './deadlock/config/navigation';
 import { fortniteModule } from './fortnite/config/navigation';
 import { valorantModule } from './valorant/config/navigation';
-import {
-  leagueModule,
-  rocketLeagueModule,
-  cs2Module,
-  apexModule,
-} from './stubs/coming-soon-games';
+import { rocketLeagueModule } from './rocket-league/config/navigation';
+import { leagueModule, cs2Module, apexModule } from './stubs/coming-soon-games';
 
 /** Single registration point — add new games here only */
 export function registerAllGames(): void {

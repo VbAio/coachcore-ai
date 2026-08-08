@@ -20,6 +20,19 @@ function countMistakes(report: CoachingReport): number {
   return (report.timeline ?? []).filter((i) => i.polarity === 'mistake').length;
 }
 
+/** Keep Deadlock dashboard stats free of Rocket League rows */
+function isRocketLeagueReplay(row: {
+  fileName?: string | null;
+  metadata?: unknown;
+  report?: { report?: unknown } | null;
+}): boolean {
+  if (row.fileName?.toLowerCase().endsWith('.replay')) return true;
+  const meta = row.metadata as { game?: string } | null;
+  if (meta?.game === 'rocket-league') return true;
+  const report = row.report?.report as { game?: string } | null;
+  return report?.game === 'rocket-league';
+}
+
 function averageSkillScores(list: SkillScores[]): SkillScores | null {
   if (!list.length) return null;
   const sums: Record<string, number> = {};
@@ -142,11 +155,12 @@ export function emptyDashboardStats() {
 
 /** Recompute persisted UserStats from completed coaching reports for a user. */
 export async function recomputeUserStats(userId: string) {
-  const replays = await prisma.replay.findMany({
+  const allReplays = await prisma.replay.findMany({
     where: { userId, status: 'complete', report: { isNot: null } },
     include: { report: true },
     orderBy: { createdAt: 'asc' },
   });
+  const replays = allReplays.filter((r) => !isRocketLeagueReplay(r));
 
   if (!replays.length) {
     const empty = emptyDashboardStats();
@@ -286,20 +300,23 @@ export async function getDashboardStatsForUser(userId: string | undefined) {
     };
   }
 
-  const completedCount = await prisma.replay.count({
-    where: { userId, status: 'complete', report: { isNot: null } },
-  });
-  const hasUploads = completedCount > 0;
+  const completedReplays = user.replays.filter(
+    (r) => r.status === 'complete' && r.report && !isRocketLeagueReplay(r)
+  );
+  const hasUploads = completedReplays.length > 0;
 
   const live = hasUploads ? await recomputeUserStats(userId) : emptyDashboardStats();
 
-  const recentAnalyses = user.replays.slice(0, 5).map((r) => ({
-    id: r.id,
-    hero: r.hero,
-    grade: r.report?.grade,
-    score: r.report?.score,
-    createdAt: r.createdAt,
-  }));
+  const recentAnalyses = user.replays
+    .filter((r) => !isRocketLeagueReplay(r))
+    .slice(0, 5)
+    .map((r) => ({
+      id: r.id,
+      hero: r.hero,
+      grade: r.report?.grade,
+      score: r.report?.score,
+      createdAt: r.createdAt,
+    }));
 
   const dailyRecommendations = !hasUploads
     ? [

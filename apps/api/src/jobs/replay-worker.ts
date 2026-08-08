@@ -1,7 +1,11 @@
 import { prisma } from '../lib/prisma.js';
-import { getParserForFile } from '@coachcore/replay-parser';
-import { runCoachingPipeline } from '@coachcore/ai-coach';
-import { buildMatchTimeline } from '@coachcore/shared';
+import {
+  getParserForFile,
+  isRocketLeagueFileName,
+  RocketLeagueReplayParser,
+} from '@coachcore/replay-parser';
+import { runCoachingPipeline, runRlCoachingPipeline } from '@coachcore/ai-coach';
+import { buildMatchTimeline, buildRlMatchTimeline } from '@coachcore/shared';
 import { broadcastReplayStatus } from '../ws/replay-ws.js';
 import { getReplayBuffer } from '../lib/storage.js';
 
@@ -41,6 +45,12 @@ async function updateStatus(
   });
 }
 
+function metadataGame(metadata: unknown): string | undefined {
+  if (!metadata || typeof metadata !== 'object') return undefined;
+  const game = (metadata as { game?: unknown }).game;
+  return typeof game === 'string' ? game : undefined;
+}
+
 /** Process a replay — works with local disk keys or S3 keys in filePath */
 export async function processReplayInline(
   replayId: string,
@@ -50,8 +60,15 @@ export async function processReplayInline(
   try {
     await updateStatus(replayId, 'parsing', 5, 'Reading replay file...');
 
+    const replayRow = await prisma.replay.findUnique({
+      where: { id: replayId },
+      select: { fileName: true, metadata: true },
+    });
+    const fileName = replayRow?.fileName ?? '';
+    const taggedGame = metadataGame(replayRow?.metadata);
+
     const buffer = await getReplayBuffer(filePath);
-    const parser = getParserForFile(buffer);
+    const parser = getParserForFile(buffer, fileName);
 
     if (!parser) {
       throw new Error('No parser available for this file format');
@@ -60,6 +77,65 @@ export async function processReplayInline(
     const validation = await parser.validate(buffer);
     if (!validation.valid) {
       throw new Error(validation.errors.join(', '));
+    }
+
+    const isRocketLeague =
+      taggedGame === 'rocket-league' ||
+      parser.name === 'rocket-league' ||
+      isRocketLeagueFileName(fileName);
+
+    if (isRocketLeague) {
+      const rlParser =
+        parser instanceof RocketLeagueReplayParser
+          ? parser
+          : new RocketLeagueReplayParser();
+
+      await updateStatus(replayId, 'parsing', 20, 'Parsing Rocket League replay...');
+      const parsed = await rlParser.parseRl(buffer, subjectSteamId);
+      const matchTimeline = buildRlMatchTimeline(parsed, replayId);
+      const subject = parsed.metadata.players.find((p) => p.isSubject);
+
+      await prisma.replay.update({
+        where: { id: replayId },
+        data: {
+          hero: subject?.name ?? 'Rocket League',
+          map: parsed.metadata.map,
+          durationSeconds: parsed.metadata.durationSeconds,
+          gameMode: parsed.metadata.playlist,
+          version: parsed.metadata.version ?? 'rl',
+          metadata: {
+            ...parsed.metadata,
+            game: 'rocket-league',
+          } as object,
+          parserNotes: parsed.parserNotes,
+          timeline: matchTimeline as object,
+        },
+      });
+
+      const report = await runRlCoachingPipeline(replayId, parsed, (stage, progress, message) => {
+        void updateStatus(replayId, stage, progress, message);
+      });
+
+      await prisma.coachingReport.create({
+        data: {
+          replayId,
+          grade: report.overallGrade,
+          score: report.overallScore,
+          report: report as object,
+        },
+      });
+
+      const owner = await prisma.replay.findUnique({
+        where: { id: replayId },
+        select: { userId: true },
+      });
+      if (owner?.userId) {
+        const { recomputeUserStats } = await import('../services/user-stats.js');
+        await recomputeUserStats(owner.userId);
+      }
+
+      await updateStatus(replayId, 'complete', 100, 'Analysis complete!', 'complete');
+      return { replayId, grade: report.overallGrade };
     }
 
     await updateStatus(replayId, 'parsing', 20, `Parsing with ${parser.name}...`);
@@ -75,7 +151,10 @@ export async function processReplayInline(
         durationSeconds: parsed.metadata.durationSeconds,
         gameMode: parsed.metadata.gameMode,
         version: parsed.metadata.version,
-        metadata: parsed.metadata as object,
+        metadata: {
+          ...(parsed.metadata as object),
+          game: 'deadlock',
+        },
         parserNotes: parsed.parserNotes,
         timeline: matchTimeline as object,
       },
@@ -94,13 +173,13 @@ export async function processReplayInline(
       },
     });
 
-    const replayRow = await prisma.replay.findUnique({
+    const replayOwner = await prisma.replay.findUnique({
       where: { id: replayId },
       select: { userId: true },
     });
-    if (replayRow?.userId) {
+    if (replayOwner?.userId) {
       const { recomputeUserStats } = await import('../services/user-stats.js');
-      await recomputeUserStats(replayRow.userId);
+      await recomputeUserStats(replayOwner.userId);
     }
 
     await updateStatus(replayId, 'complete', 100, 'Analysis complete!', 'complete');

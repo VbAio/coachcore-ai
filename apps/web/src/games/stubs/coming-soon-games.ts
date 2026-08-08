@@ -42,13 +42,6 @@ export const leagueModule = createComingSoonGameModule(
   'from-amber-500 to-yellow-600'
 );
 
-export const rocketLeagueModule = createComingSoonGameModule(
-  'rocket-league',
-  'Rocket League',
-  'Soccar meets supersonic',
-  'from-orange-500 to-blue-500'
-);
-
 export const cs2Module = createComingSoonGameModule(
   'cs2',
   'CS2',

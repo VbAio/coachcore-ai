@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { getMaxReplaySizeMb, replayRouter } from './routes/replays.js';
 import { coachRouter } from './routes/coach.js';
 import { leaderboardsRouter } from './routes/leaderboards.js';
+import { rlRouter } from './routes/rl.js';
 import { setupWebSocket } from './ws/replay-ws.js';
 import { startReplayWorker } from './jobs/replay-worker.js';
 import { getStorageProvider, getStorageWarning, getTempUploadDir } from './lib/storage.js';
@@ -64,22 +65,25 @@ app.get('/api/docs', (_req, res) => {
     version: '1.0.0',
     endpoints: {
       'GET /health': 'Health check',
-      'POST /api/replays/upload': 'Upload .dem replay (multipart/form-data, field: replay)',
+      'POST /api/replays/upload': 'Upload .dem or .replay (multipart/form-data, field: replay)',
       'GET /api/replays': 'List user replays',
       'GET /api/replays/:id': 'Get replay details',
       'GET /api/replays/:id/status': 'Get processing status',
-      'GET /api/replays/:id/report': 'Get coaching report',
+      'GET /api/replays/:id/report': 'Get coaching report (includes game field)',
+      'GET /api/rl/demo-report': 'Rocket League fixture coaching showcase',
       'POST /api/coach/:replayId/chat': 'Chat with AI coach',
       'GET /api/coach/dashboard': 'Dashboard stats',
       'GET /api/leaderboards/deadlock': 'Deadlock live leaderboard',
       'GET /api/leaderboards/deadlock/player/:steamId': 'Player profile',
       'GET /api/leaderboards/deadlock/heroes': 'Hero assets for filters',
+      'GET /api/leaderboards/rocket-league': 'Rocket League ranked 1v1/2v2/3v3 (Tracker Network)',
       'WS /ws?replayId=:id': 'Live processing updates',
     },
   });
 });
 
 app.use('/api/replays', replayRouter);
+app.use('/api/rl', rlRouter);
 app.use('/api/coach', coachRouter);
 app.use('/api/leaderboards', leaderboardsRouter);
 
