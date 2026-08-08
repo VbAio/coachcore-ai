@@ -12,6 +12,8 @@ import {
 } from '@/services/rl-leaderboard';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import { RlRankBadge } from './RlRankBadge';
+import { rankFromRating } from '../../lib/rl-ranks';
 
 export function RlLeaderboardPanel({
   initialPlaylist = '2v2',
@@ -107,7 +109,7 @@ export function RlLeaderboardPanel({
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-sky-500/[0.06] via-white/[0.02] to-orange-500/[0.06] backdrop-blur-xl">
-        <div className="hidden grid-cols-[64px_minmax(180px,1.6fr)_100px_120px] gap-3 border-b border-white/10 px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 sm:grid">
+        <div className="hidden grid-cols-[64px_minmax(180px,1.6fr)_140px_120px] gap-3 border-b border-white/10 px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 sm:grid">
           <span>Rank</span>
           <span>Player</span>
           <span>Rating</span>
@@ -145,7 +147,7 @@ export function RlLeaderboardPanel({
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: Math.min(i, 12) * 0.02 }}
-                className="grid grid-cols-[48px_1fr] items-center gap-3 px-4 py-3 sm:grid-cols-[64px_minmax(180px,1.6fr)_100px_120px]"
+                className="grid grid-cols-[48px_1fr] items-center gap-3 px-4 py-3 sm:grid-cols-[64px_minmax(180px,1.6fr)_140px_120px]"
               >
                 <span
                   className={cn(
@@ -164,7 +166,8 @@ export function RlLeaderboardPanel({
                   >
                     {player.playerName}
                   </a>
-                  <div className="mt-0.5 flex gap-3 text-xs text-zinc-500 sm:hidden">
+                  <div className="mt-0.5 flex items-center gap-2 text-xs text-zinc-500 sm:hidden">
+                    <RlRankBadge rating={player.rating} playlist={playlist} size={22} />
                     <span>{player.rating.toLocaleString()} MMR</span>
                     <span>
                       {player.matchesPlayed != null
@@ -173,8 +176,12 @@ export function RlLeaderboardPanel({
                     </span>
                   </div>
                 </div>
-                <span className="hidden font-semibold text-sky-200 sm:block">
-                  {player.rating.toLocaleString()}
+                <span className="hidden items-center gap-2 font-semibold text-sky-200 sm:inline-flex">
+                  <RlRankBadge rating={player.rating} playlist={playlist} />
+                  <span className="tabular-nums">{player.rating.toLocaleString()}</span>
+                  <span className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+                    {rankFromRating(player.rating, playlist).shortName}
+                  </span>
                 </span>
                 <span className="hidden text-zinc-400 sm:block">
                   {player.matchesPlayed != null ? player.matchesPlayed.toLocaleString() : '—'}
