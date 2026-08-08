@@ -119,7 +119,7 @@ export function rankFromRating(
         slug,
         name,
         shortName,
-        iconSrc: `/ranks/rl/${slug}.svg`,
+        iconSrc: `/ranks/rl/${slug}.png`,
       };
     }
   }
@@ -127,6 +127,6 @@ export function rankFromRating(
     slug: 'bronze-1',
     name: 'Bronze I',
     shortName: 'B1',
-    iconSrc: '/ranks/rl/bronze-1.svg',
+    iconSrc: '/ranks/rl/bronze-1.png',
   };
 }
