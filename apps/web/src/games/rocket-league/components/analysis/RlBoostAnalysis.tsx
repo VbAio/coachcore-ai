@@ -1,6 +1,6 @@
 'use client';
 
-import type { RlBoostAnalysis as Boost } from '@coachcore/shared';
+import type { RlBoostAnalysis as Boost } from '@clutchcore/shared';
 import { RlGlass, RlSectionTitle } from './ui';
 
 export function RlBoostAnalysis({ data }: { data: Boost }) {

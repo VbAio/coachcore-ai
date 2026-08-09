@@ -6,7 +6,7 @@ export function normalizeAppUrl(url: string): string {
     normalized = `https://${normalized}`;
   }
 
-  // e.g. https://coachcore-ai-web.vercel.app/.vercel.app
+  // e.g. https://clutchcore-web.vercel.app/.vercel.app
   normalized = normalized.replace(/(\.vercel\.app)\/+\.vercel\.app\b/gi, '$1');
   normalized = normalized.replace(/\/+$/, '');
 

@@ -1,6 +1,6 @@
 'use client';
 
-import type { RlDefenseBreakdown } from '@coachcore/shared';
+import type { RlDefenseBreakdown } from '@clutchcore/shared';
 import { RlGlass, RlSectionTitle } from './ui';
 
 export function RlDefenseAnalysis({ data }: { data: RlDefenseBreakdown }) {

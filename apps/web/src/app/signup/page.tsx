@@ -60,7 +60,7 @@ export default function SignupPage() {
   return (
     <AuthLayout
       title="Create your account"
-      subtitle="Join CoachCore AI — verify your email to unlock replays and synced progress"
+      subtitle="Join ClutchCore — verify your email to unlock replays and synced progress"
     >
       <OAuthButtons callbackUrl="/dashboard" />
       <AuthDivider />

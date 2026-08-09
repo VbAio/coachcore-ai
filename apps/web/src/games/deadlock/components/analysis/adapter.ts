@@ -5,7 +5,7 @@ import type {
   MistakePattern,
   SkillAxisMeta,
   SkillScores,
-} from '@coachcore/shared';
+} from '@clutchcore/shared';
 import { buildSkillAxisMeta } from './skill-meta';
 
 /** Normalize legacy reports into v2 fields the premium UI expects. */

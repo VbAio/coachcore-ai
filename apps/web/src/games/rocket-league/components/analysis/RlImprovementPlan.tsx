@@ -1,6 +1,6 @@
 'use client';
 
-import type { RlImprovementPlan as Plan, RlPlanStep } from '@coachcore/shared';
+import type { RlImprovementPlan as Plan, RlPlanStep } from '@clutchcore/shared';
 import { RlGlass, RlSectionTitle } from './ui';
 
 export function RlImprovementPlan({ plan }: { plan: Plan }) {

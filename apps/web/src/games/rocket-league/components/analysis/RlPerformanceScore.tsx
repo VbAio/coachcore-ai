@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import type { RlGrade } from '@coachcore/shared';
+import type { RlGrade } from '@clutchcore/shared';
 
 export function RlPerformanceScore({ grade, score }: { grade: RlGrade; score: number }) {
   const pct = Math.max(0, Math.min(100, score));

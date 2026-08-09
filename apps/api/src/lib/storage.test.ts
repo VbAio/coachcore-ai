@@ -40,7 +40,7 @@ describe('storage local provider', () => {
 
   it('auto-selects s3 when credentials exist and provider unset', () => {
     delete process.env.STORAGE_PROVIDER;
-    process.env.S3_BUCKET = 'coachcore-replays';
+    process.env.S3_BUCKET = 'clutchcore-replays';
     process.env.AWS_ACCESS_KEY_ID = 'key';
     process.env.AWS_SECRET_ACCESS_KEY = 'secret';
     expect(getStorageProvider()).toBe('s3');

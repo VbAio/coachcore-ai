@@ -1,4 +1,4 @@
-import type { CoachingReport, MatchTimeline } from '@coachcore/shared';
+import type { CoachingReport, MatchTimeline } from '@clutchcore/shared';
 import type { TimelineRow } from './types';
 
 export function buildTimelineRows(

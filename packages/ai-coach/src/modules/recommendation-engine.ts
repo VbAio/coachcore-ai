@@ -1,6 +1,6 @@
-import type { AiInsights, ImprovementPlan, SkillScores } from '@coachcore/shared';
+import type { AiInsights, ImprovementPlan, SkillScores } from '@clutchcore/shared';
 import type { DetectedMistake } from './mistake-detector.js';
-import type { MistakePattern } from '@coachcore/shared';
+import type { MistakePattern } from '@clutchcore/shared';
 
 export function generateImprovementPlan(
   mistakes: DetectedMistake[],

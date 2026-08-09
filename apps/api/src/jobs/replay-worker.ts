@@ -3,9 +3,9 @@ import {
   getParserForFile,
   isRocketLeagueFileName,
   RocketLeagueReplayParser,
-} from '@coachcore/replay-parser';
-import { runCoachingPipeline, runRlCoachingPipeline } from '@coachcore/ai-coach';
-import { buildMatchTimeline, buildRlMatchTimeline } from '@coachcore/shared';
+} from '@clutchcore/replay-parser';
+import { runCoachingPipeline, runRlCoachingPipeline } from '@clutchcore/ai-coach';
+import { buildMatchTimeline, buildRlMatchTimeline } from '@clutchcore/shared';
 import { broadcastReplayStatus } from '../ws/replay-ws.js';
 import { getReplayBuffer } from '../lib/storage.js';
 

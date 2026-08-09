@@ -1,6 +1,6 @@
 'use client';
 
-import type { CoachInsight, CoachingReport } from '@coachcore/shared';
+import type { CoachInsight, CoachingReport } from '@clutchcore/shared';
 import { GlassCard, SectionTitle } from './ui';
 
 export function HeroAnalysis({

@@ -1,5 +1,5 @@
 {
-  "name": "@coachcore/ai-coach",
+  "name": "@clutchcore/ai-coach",
   "version": "1.0.0",
   "private": true,
   "main": "./dist/index.js",
@@ -9,8 +9,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@coachcore/shared": "*",
-    "@coachcore/replay-parser": "*"
+    "@clutchcore/shared": "*",
+    "@clutchcore/replay-parser": "*"
   },
   "devDependencies": {
     "typescript": "^5.7.3",

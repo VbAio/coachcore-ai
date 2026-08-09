@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import type { RlCoachingReportPayload, RlCoachInsight } from '@coachcore/shared';
+import type { RlCoachingReportPayload, RlCoachInsight } from '@clutchcore/shared';
 import { RlMatchSummary } from './RlMatchSummary';
 import { RlTimeline, type RlTimelineRow } from './RlTimeline';
 import { RlCoachPanel } from './RlCoachPanel';

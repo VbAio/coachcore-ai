@@ -1,6 +1,6 @@
 'use client';
 
-import type { ImprovementPlan } from '@coachcore/shared';
+import type { ImprovementPlan } from '@clutchcore/shared';
 import { GlassCard, SectionTitle } from './ui';
 
 export function ImprovementPlanPanel({ plan }: { plan: ImprovementPlan }) {

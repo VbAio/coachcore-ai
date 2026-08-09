@@ -1,4 +1,4 @@
-import type { SkillAxisMeta, SkillScores } from '@coachcore/shared';
+import type { SkillAxisMeta, SkillScores } from '@clutchcore/shared';
 
 /** Client-side mirror of score-engine.buildSkillAxisMeta for legacy reports. */
 export function buildSkillAxisMeta(scores: SkillScores): SkillAxisMeta[] {

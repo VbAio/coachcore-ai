@@ -2,7 +2,7 @@
 
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useMemo, useRef } from 'react';
-import type { CoachInsight } from '@coachcore/shared';
+import type { CoachInsight } from '@clutchcore/shared';
 import { cn } from '@/lib/utils';
 import { formatClock } from '../vod-review/format';
 import { GlassCard, SectionTitle } from './ui';

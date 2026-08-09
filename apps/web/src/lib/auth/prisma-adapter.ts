@@ -16,7 +16,7 @@ function normalizeEmail(email?: string | null) {
 }
 
 /** Prisma adapter with email normalization and safer OAuth account linking. */
-export function coachCoreAdapter(prisma: PrismaClient): Adapter {
+export function clutchCoreAdapter(prisma: PrismaClient): Adapter {
   const base = PrismaAdapter(prisma);
 
   return {

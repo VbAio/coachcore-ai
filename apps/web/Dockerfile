@@ -5,13 +5,13 @@ FROM base AS deps
 COPY package.json package-lock.json* ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/shared/package.json ./packages/shared/
-RUN npm ci --workspace=@coachcore/web
+RUN npm ci --workspace=@clutchcore/web
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build -w @coachcore/web
+RUN npm run build -w @clutchcore/web
 
 FROM node:22-alpine AS runner
 WORKDIR /app

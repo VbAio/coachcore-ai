@@ -1,4 +1,4 @@
-# Deploy CoachCore for worldwide replay uploads
+# Deploy ClutchCore for worldwide replay uploads
 
 The Next.js site on Vercel cannot parse `.dem` files or keep uploads on disk. Host the Express API separately and point the frontend at it.
 
@@ -12,7 +12,7 @@ Browser (any device)
 
 ## 1. Object storage (S3 or R2)
 
-1. Create a **private** bucket (e.g. `coachcore-replays`).
+1. Create a **private** bucket (e.g. `clutchcore-replays`).
 2. Create API credentials with read/write on that bucket.
 3. For **Cloudflare R2**, note the S3 API endpoint:
    `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`
@@ -37,13 +37,13 @@ Browser (any device)
 | `AWS_REGION` | e.g. `auto` (R2) or `us-east-1` |
 | `S3_BUCKET` | Bucket name |
 | `S3_ENDPOINT` | R2 endpoint (leave empty for AWS S3) |
-| `CORS_ORIGIN` | `https://coachcore-ai-web.vercel.app` (comma-separate more origins if needed) |
+| `CORS_ORIGIN` | `https://clutchcore-web.vercel.app` (comma-separate more origins if needed) |
 | `AI_COACH_PROVIDER` | `openai` or `mock` |
 | `OPENAI_API_KEY` | Optional |
 | `MAX_REPLAY_SIZE_MB` | `1500` (Deadlock `.dem` files are often large; raise if needed) |
 
 5. Confirm `GET https://<railway-host>/health` returns `"status":"ok"`.
-6. Copy the public API URL (e.g. `https://coachcore-api-production.up.railway.app`).
+6. Copy the public API URL (e.g. `https://clutchcore-api-production.up.railway.app`).
 
 **Note:** Large `.dem` uploads go through the API body. If uploads time out on big files, raise Railway/service limits or add presigned direct-to-S3 uploads later.
 
@@ -55,8 +55,8 @@ In the Vercel project for `apps/web`, set:
 |----------|--------|
 | `NEXT_PUBLIC_API_URL` | `https://<your-railway-api>.up.railway.app` |
 | `NEXT_PUBLIC_WS_URL` | `wss://<your-railway-api>.up.railway.app` |
-| `AUTH_URL` | `https://coachcore-ai-web.vercel.app` |
-| `NEXT_PUBLIC_APP_URL` | `https://coachcore-ai-web.vercel.app` |
+| `AUTH_URL` | `https://clutchcore-web.vercel.app` |
+| `NEXT_PUBLIC_APP_URL` | `https://clutchcore-web.vercel.app` |
 | `DATABASE_URL` | Same Neon URL |
 | `AUTH_SECRET` / OAuth vars | As already configured |
 

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import type { DeadlockItemDef, ItemCategory } from '@coachcore/shared';
-import { categoryColor, resolveItemDef } from '@coachcore/shared';
+import type { DeadlockItemDef, ItemCategory } from '@clutchcore/shared';
+import { categoryColor, resolveItemDef } from '@clutchcore/shared';
 import { cn } from '@/lib/utils';
 
 interface Props {

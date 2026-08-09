@@ -230,7 +230,7 @@ export async function materializeReplayFile(
   }
 
   const buffer = await getReplayBuffer(storageKeyOrPath);
-  const tmpPath = path.join(os.tmpdir(), `coachcore-${uuid()}.dem`);
+  const tmpPath = path.join(os.tmpdir(), `clutchcore-${uuid()}.dem`);
   await fs.writeFile(tmpPath, buffer);
   return {
     filePath: tmpPath,

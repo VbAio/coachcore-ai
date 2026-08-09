@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { detectMistakes } from './mistake-detector.js';
 import { scoreToGrade } from './score-engine.js';
 import { buildReportFromPipeline } from '../pipeline/coaching-pipeline.js';
-import { extractFeatures } from '@coachcore/replay-parser';
-import type { ParsedReplay } from '@coachcore/shared';
+import { extractFeatures } from '@clutchcore/replay-parser';
+import type { ParsedReplay } from '@clutchcore/shared';
 
 const mockReplay: ParsedReplay = {
   metadata: {

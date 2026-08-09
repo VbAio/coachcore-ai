@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Image from 'next/image';
-import type { HeatmapData } from '@coachcore/shared';
+import type { HeatmapData } from '@clutchcore/shared';
 import { MINIMAP_SRC, MIDTOWN_BOUNDS, worldToMapPercent } from '../vod-review/map-coords';
 import { formatClock } from '../vod-review/format';
 import { GlassCard, SectionTitle } from './ui';

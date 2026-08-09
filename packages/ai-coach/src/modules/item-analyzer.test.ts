@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { analyzeBuild } from './item-analyzer.js';
-import type { ParsedReplay } from '@coachcore/shared';
+import type { ParsedReplay } from '@clutchcore/shared';
 
 const replay: ParsedReplay = {
   metadata: {

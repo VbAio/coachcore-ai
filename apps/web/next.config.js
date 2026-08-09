@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['@coachcore/shared'],
+  transpilePackages: ['@clutchcore/shared'],
   serverExternalPackages: ['@node-rs/argon2', 'ws'],
   images: {
     remotePatterns: [

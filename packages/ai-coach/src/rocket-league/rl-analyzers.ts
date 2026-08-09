@@ -6,7 +6,7 @@ import type {
   RlParsedReplay,
   RlRotationAnalysis,
   RlShotBreakdown,
-} from '@coachcore/shared';
+} from '@clutchcore/shared';
 
 export function analyzeRlBoost(replay: RlParsedReplay, insights: RlCoachInsight[]): RlBoostAnalysis {
   const subject = replay.subjectPlayerId;

@@ -23,10 +23,10 @@ export function PlatformNavbar() {
             whileTap={{ scale: 0.96 }}
             className="flex h-8 w-8 items-center justify-center rounded-lg gradient-purple text-sm font-bold"
           >
-            CC
+            Cl
           </motion.div>
           <span className="text-lg font-bold text-white transition-colors group-hover:text-purple-200">
-            CoachCore AI
+            ClutchCore
           </span>
         </Link>
         <div className="hidden items-center gap-8 text-sm text-zinc-400 md:flex">

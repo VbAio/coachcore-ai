@@ -10,7 +10,7 @@ import { easeOutSoft } from '@/lib/motion';
 const faqs = [
   {
     q: 'What replay files are supported?',
-    a: 'CoachCore AI supports Deadlock .dem replay files downloaded from the game. Upload directly from your replays folder.',
+    a: 'ClutchCore supports Deadlock .dem replay files downloaded from the game. Upload directly from your replays folder.',
   },
   {
     q: 'How long does analysis take?',

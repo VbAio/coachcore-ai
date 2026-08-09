@@ -1,6 +1,6 @@
 'use client';
 
-import type { BuildReview, MatchTimelinePurchase } from '@coachcore/shared';
+import type { BuildReview, MatchTimelinePurchase } from '@clutchcore/shared';
 import { ChevronDown } from 'lucide-react';
 import { formatClock } from './format';
 import { CategoryDot, ItemIcon } from './ItemIcon';

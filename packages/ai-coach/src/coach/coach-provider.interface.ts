@@ -1,5 +1,5 @@
-import type { CoachingReport, ChatCoachMessage, ParsedReplay } from '@coachcore/shared';
-import type { ExtractedFeatures } from '@coachcore/replay-parser';
+import type { CoachingReport, ChatCoachMessage, ParsedReplay } from '@clutchcore/shared';
+import type { ExtractedFeatures } from '@clutchcore/replay-parser';
 
 export interface CoachProvider {
   readonly name: string;

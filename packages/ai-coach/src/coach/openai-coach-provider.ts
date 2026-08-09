@@ -1,6 +1,6 @@
-import type { ChatCoachMessage, CoachingReport, CoachInsight, ParsedReplay } from '@coachcore/shared';
-import type { ExtractedFeatures } from '@coachcore/replay-parser';
-import { extractFeatures } from '@coachcore/replay-parser';
+import type { ChatCoachMessage, CoachingReport, CoachInsight, ParsedReplay } from '@clutchcore/shared';
+import type { ExtractedFeatures } from '@clutchcore/replay-parser';
+import { extractFeatures } from '@clutchcore/replay-parser';
 import { detectMistakes } from '../modules/mistake-detector.js';
 import type { CoachProvider, CoachProviderConfig } from './coach-provider.interface.js';
 import { buildReportFromPipeline } from '../pipeline/coaching-pipeline.js';
@@ -203,7 +203,7 @@ Return ONLY JSON matching:
           messages: [
             {
               role: 'system',
-              content: `You are CoachCore AI for Deadlock. Reference replay timestamps when helpful.
+              content: `You are ClutchCore for Deadlock. Reference replay timestamps when helpful.
 Subject: ${subject?.name ?? 'player'} on ${subject?.hero ?? 'unknown'} (${subject ? `${subject.kills}/${subject.deaths}/${subject.assists}` : 'n/a'}).
 Report: grade ${report.overallGrade}, weakness ${report.biggestWeakness}, strength ${report.biggestStrength}.
 Confidence: ${replay.extractionConfidence}. Notes: ${replay.parserNotes.slice(0, 5).join('; ')}.

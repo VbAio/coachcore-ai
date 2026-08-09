@@ -1,6 +1,6 @@
 'use client';
 
-import type { RlMatchSummaryStats } from '@coachcore/shared';
+import type { RlMatchSummaryStats } from '@clutchcore/shared';
 import { RlGlass, RlSectionTitle } from './ui';
 import { RlPerformanceScore } from './RlPerformanceScore';
 

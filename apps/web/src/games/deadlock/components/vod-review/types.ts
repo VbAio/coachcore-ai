@@ -1,4 +1,4 @@
-import type { CoachingReport, CoachInsight, MatchTimeline } from '@coachcore/shared';
+import type { CoachingReport, CoachInsight, MatchTimeline } from '@clutchcore/shared';
 
 export type TimelineFilter =
   | 'all'

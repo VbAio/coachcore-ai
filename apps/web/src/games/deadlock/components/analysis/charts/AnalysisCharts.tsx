@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import type { CoachInsight, MistakeCategory, TeamFightBreakdown } from '@coachcore/shared';
+import type { CoachInsight, MistakeCategory, TeamFightBreakdown } from '@clutchcore/shared';
 import { GlassCard, SectionTitle } from '../ui';
 import { formatClock } from '../../vod-review/format';
 

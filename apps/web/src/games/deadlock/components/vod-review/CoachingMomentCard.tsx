@@ -2,7 +2,7 @@
 
 import { ChevronDown, Info } from 'lucide-react';
 import { useState } from 'react';
-import type { CoachInsight } from '@coachcore/shared';
+import type { CoachInsight } from '@clutchcore/shared';
 import { cn } from '@/lib/utils';
 import { formatClock } from './format';
 

@@ -1,4 +1,4 @@
-import type { RlCoachingReport, RlCoachingReportPayload, RlMatchTimeline } from '@coachcore/shared';
+import type { RlCoachingReport, RlCoachingReportPayload, RlMatchTimeline } from '@clutchcore/shared';
 
 export function normalizeRlPayload(raw: unknown): RlCoachingReportPayload | null {
   if (!raw || typeof raw !== 'object') return null;

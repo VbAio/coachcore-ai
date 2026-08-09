@@ -1,6 +1,6 @@
 'use client';
 
-import type { RlShotBreakdown } from '@coachcore/shared';
+import type { RlShotBreakdown } from '@clutchcore/shared';
 import { RlGlass, RlSectionTitle, formatClock } from './ui';
 
 export function RlShotAnalysis({ shots }: { shots: RlShotBreakdown[] }) {

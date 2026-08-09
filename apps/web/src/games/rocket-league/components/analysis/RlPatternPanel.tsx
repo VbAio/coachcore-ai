@@ -1,6 +1,6 @@
 'use client';
 
-import type { RlMistakePattern } from '@coachcore/shared';
+import type { RlMistakePattern } from '@clutchcore/shared';
 import { RlGlass, RlSectionTitle } from './ui';
 
 export function RlPatternPanel({

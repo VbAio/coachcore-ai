@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
-import type { CoachingReportPayload, MatchTimelinePurchase } from '@coachcore/shared';
+import type { CoachingReportPayload, MatchTimelinePurchase } from '@clutchcore/shared';
 import { cn } from '@/lib/utils';
 import { buildTimelineRows } from './build-timeline-rows';
 import { CoachingMomentCard } from './CoachingMomentCard';

@@ -1,5 +1,5 @@
-import type { ChatCoachMessage, CoachingReport, ParsedReplay } from '@coachcore/shared';
-import type { ExtractedFeatures } from '@coachcore/replay-parser';
+import type { ChatCoachMessage, CoachingReport, ParsedReplay } from '@clutchcore/shared';
+import type { ExtractedFeatures } from '@clutchcore/replay-parser';
 import type { CoachProvider } from './coach-provider.interface.js';
 import { buildReportFromPipeline } from '../pipeline/coaching-pipeline.js';
 

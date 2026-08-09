@@ -1,4 +1,4 @@
-import type { CoachInsight } from '@coachcore/shared';
+import type { CoachInsight } from '@clutchcore/shared';
 import type { DetectedMistake } from './mistake-detector.js';
 
 export function generateTimeline(mistakes: DetectedMistake[]): CoachInsight[] {

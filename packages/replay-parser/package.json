@@ -1,5 +1,5 @@
 {
-  "name": "@coachcore/replay-parser",
+  "name": "@clutchcore/replay-parser",
   "version": "1.0.0",
   "private": true,
   "main": "./dist/index.js",
@@ -9,7 +9,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@coachcore/shared": "*",
+    "@clutchcore/shared": "*",
     "deadem": "^3.4.1"
   },
   "devDependencies": {

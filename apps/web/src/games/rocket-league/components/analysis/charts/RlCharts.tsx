@@ -1,6 +1,6 @@
 'use client';
 
-import type { RlMatchTimeline, RlSkillScores } from '@coachcore/shared';
+import type { RlMatchTimeline, RlSkillScores } from '@clutchcore/shared';
 import {
   RadarChart,
   PolarGrid,

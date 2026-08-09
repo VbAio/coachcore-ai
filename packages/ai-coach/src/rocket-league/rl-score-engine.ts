@@ -4,7 +4,7 @@ import type {
   RlParsedReplay,
   RlSkillAxisMeta,
   RlSkillScores,
-} from '@coachcore/shared';
+} from '@clutchcore/shared';
 
 function clamp(n: number, lo = 0, hi = 100) {
   return Math.max(lo, Math.min(hi, Math.round(n)));

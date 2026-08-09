@@ -40,9 +40,9 @@ export function AuthLayout({
                 whileHover={{ scale: 1.08, rotate: -4 }}
                 className="flex h-10 w-10 items-center justify-center rounded-xl gradient-purple text-sm font-bold"
               >
-                CC
+                Cl
               </motion.div>
-              <span className="text-xl font-bold text-white">CoachCore AI</span>
+              <span className="text-xl font-bold text-white">ClutchCore</span>
             </Link>
           </motion.div>
 

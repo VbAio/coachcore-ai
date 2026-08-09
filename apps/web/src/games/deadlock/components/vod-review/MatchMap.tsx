@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useMemo } from 'react';
-import type { MatchTimeline, MatchTimelineTrack } from '@coachcore/shared';
+import type { MatchTimeline, MatchTimelineTrack } from '@clutchcore/shared';
 import { cn } from '@/lib/utils';
 import {
   interpolateSamples,

@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { buildRlDemoFixture } from '@coachcore/replay-parser';
-import { runRlCoachingPipeline } from '@coachcore/ai-coach';
-import { buildRlMatchTimeline } from '@coachcore/shared';
+import { buildRlDemoFixture } from '@clutchcore/replay-parser';
+import { runRlCoachingPipeline } from '@clutchcore/ai-coach';
+import { buildRlMatchTimeline } from '@clutchcore/shared';
 
 export const rlRouter = Router();
 

@@ -4,7 +4,7 @@ import type {
   BuildReview,
   ItemPurchaseAnalysis,
   MatchTimelinePurchase,
-} from '@coachcore/shared';
+} from '@clutchcore/shared';
 import { formatClock } from './format';
 import { BuildPath } from './BuildPath';
 import { CategoryDot, ItemIcon } from './ItemIcon';
