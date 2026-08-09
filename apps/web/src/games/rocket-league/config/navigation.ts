@@ -1,4 +1,4 @@
-import { LayoutDashboard, FileVideo, Trophy, Settings } from 'lucide-react';
+import { LayoutDashboard, FileVideo, Settings } from 'lucide-react';
 import type { GameModuleDefinition } from '@/games/types';
 
 export const rocketLeagueModule: GameModuleDefinition = {
@@ -9,7 +9,7 @@ export const rocketLeagueModule: GameModuleDefinition = {
   accentGradient: 'from-orange-500 to-sky-500',
   replayExtension: '.replay',
   defaultPath: '',
-  features: ['dashboard', 'replay-upload', 'replay-ai', 'leaderboards', 'settings'],
+  features: ['dashboard', 'replay-upload', 'replay-ai', 'settings'],
   navigation: [
     { id: 'dashboard', label: 'Dashboard', path: '', icon: LayoutDashboard, feature: 'dashboard' },
     {
@@ -18,13 +18,6 @@ export const rocketLeagueModule: GameModuleDefinition = {
       path: 'replays',
       icon: FileVideo,
       feature: 'replay-upload',
-    },
-    {
-      id: 'leaderboard',
-      label: 'Leaderboard',
-      path: 'leaderboard',
-      icon: Trophy,
-      feature: 'leaderboards',
     },
     { id: 'settings', label: 'Settings', path: 'settings', icon: Settings, feature: 'settings' },
   ],
@@ -48,20 +41,6 @@ export const rocketLeagueModule: GameModuleDefinition = {
       feature: 'replay-ai',
       load: () =>
         import('../pages/CoachingReport').then((m) => ({ default: m.RocketLeagueCoachingReport })),
-    },
-    {
-      path: 'leaderboard',
-      title: 'Leaderboard',
-      feature: 'leaderboards',
-      load: () =>
-        import('../pages/Leaderboards').then((m) => ({ default: m.RocketLeagueLeaderboardsPage })),
-    },
-    {
-      path: 'leaderboards',
-      title: 'Leaderboard',
-      feature: 'leaderboards',
-      load: () =>
-        import('../pages/Leaderboards').then((m) => ({ default: m.RocketLeagueLeaderboardsPage })),
     },
     {
       path: 'settings',
