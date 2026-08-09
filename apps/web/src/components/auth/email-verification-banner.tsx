@@ -14,15 +14,50 @@ function isAuthPath(pathname: string) {
   return AUTH_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
 
+function hasVerifiedEmail(value: unknown): boolean {
+  if (!value) return false;
+  if (value instanceof Date) return !Number.isNaN(value.getTime());
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return false;
+    return true;
+  }
+  return true;
+}
+
 export function EmailVerificationBanner() {
   const pathname = usePathname();
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
 
   const show =
     status === 'authenticated' &&
     !!session?.user &&
-    !session.user.emailVerified &&
+    !hasVerifiedEmail(session.user.emailVerified) &&
     !isAuthPath(pathname);
+
+  // If verified in another tab / after clicking the email link, drop the banner ASAP
+  useEffect(() => {
+    if (!show) return;
+
+    const refresh = () => {
+      void update();
+    };
+
+    const onFocus = () => refresh();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisible);
+    const interval = window.setInterval(refresh, 15_000);
+
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.clearInterval(interval);
+    };
+  }, [show, update]);
 
   useEffect(() => {
     document.documentElement.style.setProperty('--verify-banner-height', show ? '44px' : '0px');
@@ -43,7 +78,9 @@ export function EmailVerificationBanner() {
     >
       <Mail className="h-4 w-4 shrink-0 text-amber-400" aria-hidden />
       <span className="truncate text-amber-100">
-        <span className="hidden sm:inline">Verify your email to unlock saving heroes, replays, and synced settings.</span>
+        <span className="hidden sm:inline">
+          Verify your email to unlock saving heroes, replays, and synced settings.
+        </span>
         <span className="sm:hidden">Verify your email to unlock full access.</span>
       </span>
       <Link

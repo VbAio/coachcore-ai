@@ -4,6 +4,7 @@ import { auth } from '@/auth';
 import { generateToken, tokenExpiresHours } from '@/lib/auth/tokens';
 import { sendVerificationEmail } from '@/lib/auth/email';
 import { rateLimit, getClientIp } from '@/lib/auth/rate-limit';
+import { setUserSession } from '@/lib/auth/create-session';
 
 export async function POST(request: Request) {
   try {
@@ -30,15 +31,41 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
+    const verifiedAt = new Date();
     await prisma.$transaction([
       prisma.user.update({
         where: { id: user.id },
-        data: { emailVerified: new Date() },
+        data: { emailVerified: verifiedAt },
       }),
       prisma.verificationToken.delete({ where: { token } }),
     ]);
 
-    return NextResponse.json({ success: true, message: 'Email verified successfully' });
+    // Refresh JWT cookie so the banner clears and /replays unlocks without re-login
+    const session = await auth();
+    const sameUser =
+      !!session?.user &&
+      (session.user.id === user.id ||
+        session.user.email?.toLowerCase() === user.email.toLowerCase());
+
+    if (sameUser) {
+      await setUserSession({
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+        emailVerified: verifiedAt,
+        displayName: user.displayName,
+        avatar: user.avatar,
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Email verified successfully',
+      emailVerified: verifiedAt.toISOString(),
+      sessionRefreshed: sameUser,
+      redirectTo: '/rocket-league/replays',
+    });
   } catch (err) {
     console.error('[verify-email]', err);
     return NextResponse.json({ error: 'Verification failed' }, { status: 500 });
