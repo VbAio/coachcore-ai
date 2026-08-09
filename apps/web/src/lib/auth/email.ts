@@ -10,15 +10,38 @@ function getFromEmail() {
   return process.env.EMAIL_FROM ?? 'CoachCore AI <noreply@coachcore.ai>';
 }
 
-async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
+export type SendEmailResult = {
+  ok: boolean;
+  /** Present when ok is false — safe to show in admin/dev UI or logs. */
+  error?: string;
+  /** True when the email was only printed to the server console (local/dev). */
+  loggedOnly?: boolean;
+};
+
+function allowConsoleEmailFallback(): boolean {
+  // Never pretend a real send happened in production / on Vercel.
+  if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
+    return false;
+  }
+  return process.env.ALLOW_CONSOLE_EMAIL !== '0';
+
+async function sendEmail(to: string, subject: string, html: string): Promise<SendEmailResult> {
   const resend = getResend();
   if (!resend) {
-    console.log(`[email:dev] To: ${to}\nSubject: ${subject}\n${html}`);
-    return true;
+    if (allowConsoleEmailFallback()) {
+      console.log(`[email:dev] To: ${to}\nSubject: ${subject}\n${html}`);
+      return { ok: true, loggedOnly: true };
+    }
+    console.error('[email] RESEND_API_KEY is not set — cannot send email');
+    return {
+      ok: false,
+      error:
+        'Email delivery is not configured. Set RESEND_API_KEY (and EMAIL_FROM) in your deployment environment.',
+    };
   }
 
   try {
-    const { error } = await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: getFromEmail(),
       to,
       subject,
@@ -26,12 +49,19 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
     });
     if (error) {
       console.error('[email] Send failed:', error);
-      return false;
+      return {
+        ok: false,
+        error: error.message || 'Resend rejected the email. Check EMAIL_FROM domain verification.',
+      };
     }
-    return true;
+    console.log('[email] Sent', { to, id: data?.id });
+    return { ok: true };
   } catch (err) {
     console.error('[email] Send error:', err);
-    return false;
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Failed to send email',
+    };
   }
 }
 
@@ -56,7 +86,11 @@ function emailLayout(content: string): string {
 </html>`;
 }
 
-export async function sendVerificationEmail(email: string, token: string, username: string): Promise<boolean> {
+export async function sendVerificationEmail(
+  email: string,
+  token: string,
+  username: string
+): Promise<SendEmailResult> {
   const url = `${getConfiguredAppUrl()}/verify-email?token=${encodeURIComponent(token)}`;
   const html = emailLayout(`
     <p>Hey <strong style="color:#fff;">${username}</strong>,</p>
@@ -71,7 +105,10 @@ export async function sendVerificationEmail(email: string, token: string, userna
   return sendEmail(email, 'Verify your CoachCore AI account', html);
 }
 
-export async function sendPasswordResetEmail(email: string, token: string): Promise<boolean> {
+export async function sendPasswordResetEmail(
+  email: string,
+  token: string
+): Promise<SendEmailResult> {
   const url = `${getConfiguredAppUrl()}/reset-password?token=${encodeURIComponent(token)}`;
   const html = emailLayout(`
     <p>We received a request to reset your password.</p>
@@ -83,7 +120,10 @@ export async function sendPasswordResetEmail(email: string, token: string): Prom
   return sendEmail(email, 'Reset your CoachCore AI password', html);
 }
 
-export async function sendEmailChangeConfirmation(email: string, token: string): Promise<boolean> {
+export async function sendEmailChangeConfirmation(
+  email: string,
+  token: string
+): Promise<SendEmailResult> {
   const url = `${getConfiguredAppUrl()}/verify-email?token=${encodeURIComponent(token)}`;
   const html = emailLayout(`
     <p>Confirm your new email address for CoachCore AI.</p>

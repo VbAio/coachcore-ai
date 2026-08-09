@@ -98,18 +98,24 @@ export async function PUT(request: Request) {
       },
     });
 
-    const emailSent = await sendVerificationEmail(user.email, token, user.username);
-    if (!emailSent) {
+    const emailResult = await sendVerificationEmail(user.email, token, user.username);
+    if (!emailResult.ok) {
       return NextResponse.json(
         {
           error:
+            emailResult.error ??
             'Could not send verification email. Check RESEND_API_KEY / EMAIL_FROM, then try again.',
         },
         { status: 502 }
       );
     }
 
-    return NextResponse.json({ success: true, message: 'Verification email sent' });
+    return NextResponse.json({
+      success: true,
+      message: emailResult.loggedOnly
+        ? 'Dev mode: verification link was logged to the server console (RESEND_API_KEY not set).'
+        : 'Verification email sent. Check your inbox (and spam).',
+    });
   } catch (err) {
     console.error('[resend-verification]', err);
     return NextResponse.json({ error: 'Failed to resend email' }, { status: 500 });
