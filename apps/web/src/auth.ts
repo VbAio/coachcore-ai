@@ -65,10 +65,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
       }
 
-      if (trigger === 'update' && session) {
-        token.name = session.name;
-        token.picture = session.image;
-        if (session.username) token.username = session.username;
+      if (trigger === 'update') {
+        const userId = (token.id as string | undefined) ?? undefined;
+        if (userId) {
+          try {
+            const dbUser = await prisma.user.findUnique({ where: { id: userId } });
+            if (dbUser) {
+              token.emailVerified = dbUser.emailVerified;
+              token.username = dbUser.username;
+              token.role = dbUser.role;
+              token.name = dbUser.displayName ?? dbUser.name;
+              token.picture = dbUser.avatar ?? dbUser.image;
+            }
+          } catch (err) {
+            console.error('[auth jwt update]', err);
+          }
+        }
+
+        if (session) {
+          if (session.name) token.name = session.name;
+          if (session.image) token.picture = session.image;
+          if (session.username) token.username = session.username;
+          if ('emailVerified' in session) {
+            token.emailVerified = session.emailVerified ?? null;
+          }
+        }
       }
 
       return token;
@@ -80,6 +101,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       if (account?.provider !== 'credentials' && user.id) {
         try {
+          // Treat OAuth providers that return an email as verified
+          const providerVerified =
+            account?.provider === 'google' ||
+            (account?.provider === 'discord' && !!user.email);
+
           await prisma.user.update({
             where: { id: user.id },
             data: {
@@ -88,7 +114,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               displayName: user.name ?? undefined,
               name: user.name ?? undefined,
               image: user.image ?? undefined,
-              ...(account?.provider === 'google' ? { emailVerified: new Date() } : {}),
+              ...(providerVerified ? { emailVerified: new Date() } : {}),
             },
           });
         } catch (err) {
@@ -133,7 +159,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             avatar: user.image ?? existing.avatar,
             name: user.name ?? existing.name,
             image: user.image ?? existing.image,
-            emailVerified: user.emailVerified ?? existing.emailVerified,
+            // OAuth accounts with an email address are treated as verified
+            emailVerified:
+              user.emailVerified ??
+              existing.emailVerified ??
+              (user.email ? new Date() : null),
           },
         });
 

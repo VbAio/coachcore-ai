@@ -98,7 +98,16 @@ export async function PUT(request: Request) {
       },
     });
 
-    await sendVerificationEmail(user.email, token, user.username);
+    const emailSent = await sendVerificationEmail(user.email, token, user.username);
+    if (!emailSent) {
+      return NextResponse.json(
+        {
+          error:
+            'Could not send verification email. Check RESEND_API_KEY / EMAIL_FROM, then try again.',
+        },
+        { status: 502 }
+      );
+    }
 
     return NextResponse.json({ success: true, message: 'Verification email sent' });
   } catch (err) {

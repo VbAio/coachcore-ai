@@ -38,7 +38,8 @@ function VerifyEmailContent() {
         if (res.ok) {
           setStatus('success');
           setMessage('Email verified! You now have full access.');
-          await update();
+          // Refresh JWT so middleware unlocks uploads/settings without re-login
+          await update({ emailVerified: new Date().toISOString() });
           setTimeout(() => router.push('/dashboard'), 2000);
         } else {
           setStatus('error');
@@ -105,12 +106,19 @@ function VerifyEmailContent() {
       <div>
         <p className="text-zinc-300">
           {justRegistered
-            ? 'Account created! Check your inbox for a verification link.'
+            ? 'Account created! Check your inbox for a verification link — then you can upload replays and sync settings.'
             : 'Verify your email to unlock saving heroes, replays, and synced settings.'}
         </p>
-        {session?.user?.email && (
-          <p className="mt-2 text-sm text-zinc-500">Sent to {session.user.email}</p>
+        {(session?.user?.email || emailInput) && (
+          <p className="mt-2 text-sm text-zinc-500">
+            {session?.user?.email
+              ? `Sent to ${session.user.email}`
+              : 'Enter the email you signed up with to resend the link.'}
+          </p>
         )}
+        <p className="mt-2 text-xs text-zinc-600">
+          Link expires in 24 hours. Check spam if you don&apos;t see it.
+        </p>
       </div>
 
       {!session?.user?.email && (

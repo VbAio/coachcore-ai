@@ -49,7 +49,7 @@ export default function SignupPage() {
         return;
       }
 
-      window.location.href = '/deadlock?registered=1';
+      window.location.href = data.redirectTo ?? '/verify-email?registered=1';
     } catch {
       setError('Something went wrong. Please try again.');
     } finally {
@@ -58,7 +58,10 @@ export default function SignupPage() {
   }
 
   return (
-    <AuthLayout title="Create your account" subtitle="Join CoachCore AI and level up your Deadlock game">
+    <AuthLayout
+      title="Create your account"
+      subtitle="Join CoachCore AI — verify your email to unlock replays and synced progress"
+    >
       <OAuthButtons callbackUrl="/dashboard" />
       <AuthDivider />
 

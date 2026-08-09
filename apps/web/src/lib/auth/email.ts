@@ -2,18 +2,28 @@ import { Resend } from 'resend';
 
 import { getConfiguredAppUrl } from '@/lib/auth/app-url';
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-const fromEmail = process.env.EMAIL_FROM ?? 'CoachCore AI <noreply@coachcore.ai>';
-const appUrl = getConfiguredAppUrl();
+function getResend() {
+  return process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+}
+
+function getFromEmail() {
+  return process.env.EMAIL_FROM ?? 'CoachCore AI <noreply@coachcore.ai>';
+}
 
 async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
+  const resend = getResend();
   if (!resend) {
     console.log(`[email:dev] To: ${to}\nSubject: ${subject}\n${html}`);
     return true;
   }
 
   try {
-    const { error } = await resend.emails.send({ from: fromEmail, to, subject, html });
+    const { error } = await resend.emails.send({
+      from: getFromEmail(),
+      to,
+      subject,
+      html,
+    });
     if (error) {
       console.error('[email] Send failed:', error);
       return false;
@@ -47,20 +57,22 @@ function emailLayout(content: string): string {
 }
 
 export async function sendVerificationEmail(email: string, token: string, username: string): Promise<boolean> {
-  const url = `${appUrl}/verify-email?token=${token}`;
+  const url = `${getConfiguredAppUrl()}/verify-email?token=${encodeURIComponent(token)}`;
   const html = emailLayout(`
     <p>Hey <strong style="color:#fff;">${username}</strong>,</p>
     <p>Welcome to CoachCore AI! Verify your email to unlock saving heroes, replays, and synced settings across devices.</p>
     <p style="text-align:center;margin:32px 0;">
       <a href="${url}" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#9333ea,#6366f1);color:#fff;text-decoration:none;border-radius:10px;font-weight:600;">Verify Email</a>
     </p>
+    <p style="color:#71717a;font-size:13px;">Or paste this link into your browser:</p>
+    <p style="color:#a78bfa;font-size:12px;word-break:break-all;">${url}</p>
     <p style="color:#71717a;font-size:13px;">This link expires in 24 hours. If you didn't create an account, ignore this email.</p>
   `);
   return sendEmail(email, 'Verify your CoachCore AI account', html);
 }
 
 export async function sendPasswordResetEmail(email: string, token: string): Promise<boolean> {
-  const url = `${appUrl}/reset-password?token=${token}`;
+  const url = `${getConfiguredAppUrl()}/reset-password?token=${encodeURIComponent(token)}`;
   const html = emailLayout(`
     <p>We received a request to reset your password.</p>
     <p style="text-align:center;margin:32px 0;">
@@ -72,7 +84,7 @@ export async function sendPasswordResetEmail(email: string, token: string): Prom
 }
 
 export async function sendEmailChangeConfirmation(email: string, token: string): Promise<boolean> {
-  const url = `${appUrl}/verify-email?token=${token}`;
+  const url = `${getConfiguredAppUrl()}/verify-email?token=${encodeURIComponent(token)}`;
   const html = emailLayout(`
     <p>Confirm your new email address for CoachCore AI.</p>
     <p style="text-align:center;margin:32px 0;">
