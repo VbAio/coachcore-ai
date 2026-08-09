@@ -1,6 +1,6 @@
-import { NextResponse, type NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { middlewareAuth } from '@/middleware-auth';
-import { isEmailVerified } from '@/lib/auth/is-email-verified';
 
 const authRoutes = ['/login', '/signup', '/forgot-password', '/reset-password'];
 const protectedRoutes = ['/dashboard', '/upload', '/settings', '/report'];
@@ -11,54 +11,79 @@ function isReplayUploadPath(pathname: string) {
   return /^\/[a-z0-9-]+\/replays\/?$/.test(pathname);
 }
 
-/**
- * Stay on the hostname the browser actually opened.
- * Avoids AUTH_URL pointing at a renamed Vercel host that has no deployment yet
- * (e.g. Replay → login redirect → DEPLOYMENT_NOT_FOUND on clutchcore.vercel.app).
- */
-function requestOrigin(req: NextRequest): string {
-  const host =
-    req.headers.get('x-forwarded-host')?.split(',')[0]?.trim() ||
-    req.headers.get('host')?.split(',')[0]?.trim() ||
-    req.nextUrl.host;
-  const proto =
-    req.headers.get('x-forwarded-proto')?.split(',')[0]?.trim() ||
-    req.nextUrl.protocol.replace(':', '') ||
-    'https';
-  return `${proto}://${host}`;
+function isEmailVerified(value: unknown): boolean {
+  if (value == null || value === false) return false;
+  if (typeof value === 'number') return Number.isFinite(value) && value > 0;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === 'null' || trimmed === 'undefined' || trimmed === 'false') {
+      return false;
+    }
+    return !Number.isNaN(Date.parse(trimmed));
+  }
+  if (value instanceof Date) return !Number.isNaN(value.getTime());
+  return false;
 }
 
-function redirectPath(req: NextRequest, path: string) {
-  return NextResponse.redirect(new URL(path, requestOrigin(req)));
+/** Build a same-site redirect; never throw (bad AUTH_URL must not 500 the site). */
+function redirectTo(req: NextRequest, pathname: string, callbackUrl?: string) {
+  try {
+    const url = req.nextUrl.clone();
+    url.pathname = pathname;
+    url.search = '';
+    if (callbackUrl) url.searchParams.set('callbackUrl', callbackUrl);
+
+    // Prefer the Host the browser used (alias), not a renamed AUTH_URL host with no deploy
+    const browserHost = req.headers.get('host')?.split(',')[0]?.trim();
+    if (browserHost && url.host !== browserHost && !browserHost.includes('localhost')) {
+      const proto = req.headers.get('x-forwarded-proto')?.split(',')[0]?.trim() || 'https';
+      const absolute = new URL(`${proto}://${browserHost}${url.pathname}${url.search}`);
+      return NextResponse.redirect(absolute);
+    }
+
+    return NextResponse.redirect(url);
+  } catch (err) {
+    console.error('[middleware] redirect failed', err);
+    try {
+      const fallback = new URL(pathname, req.url);
+      if (callbackUrl) fallback.searchParams.set('callbackUrl', callbackUrl);
+      return NextResponse.redirect(fallback);
+    } catch {
+      return NextResponse.next();
+    }
+  }
 }
 
 export default middlewareAuth((req) => {
-  const { pathname } = req.nextUrl;
-  const isLoggedIn = !!req.auth;
-  // Banner + replay upload stay locked until email is actually verified
-  const isVerified = isEmailVerified(req.auth?.user?.emailVerified);
+  try {
+    const { pathname } = req.nextUrl;
+    const isLoggedIn = !!req.auth;
+    const isVerified = isEmailVerified(req.auth?.user?.emailVerified);
 
-  const isAuthRoute = authRoutes.some((r) => pathname.startsWith(r));
-  const isProtected =
-    protectedRoutes.some((r) => pathname.startsWith(r)) || isReplayUploadPath(pathname);
-  const needsVerification =
-    verifiedRequiredRoutes.some((r) => pathname.startsWith(r)) || isReplayUploadPath(pathname);
+    const isAuthRoute = authRoutes.some((r) => pathname.startsWith(r));
+    const isProtected =
+      protectedRoutes.some((r) => pathname.startsWith(r)) || isReplayUploadPath(pathname);
+    const needsVerification =
+      verifiedRequiredRoutes.some((r) => pathname.startsWith(r)) || isReplayUploadPath(pathname);
 
-  if (isLoggedIn && isAuthRoute && pathname !== '/verify-email') {
-    return redirectPath(req, '/dashboard');
+    if (isLoggedIn && isAuthRoute && pathname !== '/verify-email') {
+      return redirectTo(req, '/dashboard');
+    }
+
+    if (!isLoggedIn && isProtected) {
+      return redirectTo(req, '/login', pathname);
+    }
+
+    if (isLoggedIn && needsVerification && !isVerified && pathname !== '/verify-email') {
+      return redirectTo(req, '/verify-email');
+    }
+
+    return NextResponse.next();
+  } catch (err) {
+    console.error('[middleware] crashed', err);
+    // Fail open on unexpected errors so the site is not a blank MIDDLEWARE_INVOCATION_FAILED page
+    return NextResponse.next();
   }
-
-  if (!isLoggedIn && isProtected) {
-    const loginUrl = new URL('/login', requestOrigin(req));
-    loginUrl.searchParams.set('callbackUrl', pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  if (isLoggedIn && needsVerification && !isVerified && pathname !== '/verify-email') {
-    return redirectPath(req, '/verify-email');
-  }
-
-  return NextResponse.next();
 });
 
 export const config = {
