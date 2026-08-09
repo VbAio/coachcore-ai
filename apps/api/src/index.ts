@@ -76,7 +76,6 @@ app.get('/api/docs', (_req, res) => {
       'GET /api/leaderboards/deadlock': 'Deadlock live leaderboard',
       'GET /api/leaderboards/deadlock/player/:steamId': 'Player profile',
       'GET /api/leaderboards/deadlock/heroes': 'Hero assets for filters',
-      'GET /api/leaderboards/rocket-league': 'Rocket League ranked 1v1/2v2/3v3 (Tracker Network)',
       'WS /ws?replayId=:id': 'Live processing updates',
     },
   });

@@ -190,17 +190,12 @@ export function RocketLeagueDashboard(_props: GamePageProps) {
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-white">Recent Analyses</h2>
-              <div className="flex gap-3 text-xs">
-                <Link href="/rocket-league/leaderboard" className="text-orange-400 hover:text-orange-300">
-                  Leaderboard
-                </Link>
-                <Link
-                  href="/rocket-league/replays?demo=1"
-                  className="text-sky-400 hover:text-sky-300"
-                >
-                  Open demo report
-                </Link>
-              </div>
+              <Link
+                href="/rocket-league/replays?demo=1"
+                className="text-xs text-sky-400 hover:text-sky-300"
+              >
+                Open demo report
+              </Link>
             </div>
             {!hasUploads ? (
               <p className="py-10 text-center text-sm text-zinc-500">
