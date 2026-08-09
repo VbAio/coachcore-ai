@@ -8,10 +8,20 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { uploadReplay, apiFetch } from '@/lib/api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, FileVideo, CheckCircle, Loader2, AlertCircle, LogIn, Sparkles } from 'lucide-react';
+import {
+  Upload,
+  FileVideo,
+  CheckCircle,
+  Loader2,
+  AlertCircle,
+  LogIn,
+  Sparkles,
+  Mail,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGamePath } from '@/shared/context/game-context';
 import type { GamePageProps } from '@/games/types';
+import { isEmailVerified } from '@/lib/auth/is-email-verified';
 
 type UploadState = 'idle' | 'uploading' | 'processing' | 'complete' | 'error';
 
@@ -32,6 +42,8 @@ export function RocketLeagueReplayAnalysis(_props: GamePageProps) {
   const [subjectName, setSubjectName] = useState('');
 
   const signedIn = authStatus === 'authenticated' && !!session?.user?.id;
+  const emailVerified = isEmailVerified(session?.user?.emailVerified);
+  const canUpload = signedIn && emailVerified;
 
   useEffect(() => {
     if (searchParams?.get('demo') === '1') {
@@ -43,6 +55,11 @@ export function RocketLeagueReplayAnalysis(_props: GamePageProps) {
     async (file: File) => {
       if (!signedIn) {
         setError('Sign in to upload replays and track your progress');
+        setState('error');
+        return;
+      }
+      if (!emailVerified) {
+        setError('Verify your email before uploading replays');
         setState('error');
         return;
       }
@@ -67,7 +84,7 @@ export function RocketLeagueReplayAnalysis(_props: GamePageProps) {
         setState('error');
       }
     },
-    [subjectName, signedIn]
+    [subjectName, signedIn, emailVerified]
   );
 
   useEffect(() => {
@@ -119,11 +136,11 @@ export function RocketLeagueReplayAnalysis(_props: GamePageProps) {
     (e: React.DragEvent) => {
       e.preventDefault();
       setDragOver(false);
-      if (!signedIn) return;
+      if (!canUpload) return;
       const file = e.dataTransfer.files[0];
       if (file) handleFile(file);
     },
-    [handleFile, signedIn]
+    [handleFile, canUpload]
   );
 
   if (authStatus === 'loading') {
@@ -148,6 +165,38 @@ export function RocketLeagueReplayAnalysis(_props: GamePageProps) {
               <Button className="w-full gap-2 bg-sky-500 hover:bg-sky-400 sm:w-auto">
                 <LogIn className="h-4 w-4" />
                 Log in
+              </Button>
+            </Link>
+            <Link href={`${reportPath}/demo/report`}>
+              <Button variant="outline" className="w-full gap-2 sm:w-auto">
+                <Sparkles className="h-4 w-4" />
+                Open demo report
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!emailVerified) {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <h1 className="mb-2 text-3xl font-bold text-white">Replay Analysis</h1>
+        <p className="mb-8 text-zinc-400">Verify your email before uploading replays.</p>
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-10 text-center backdrop-blur-xl">
+          <Mail className="mx-auto mb-4 h-12 w-12 text-amber-400" />
+          <p className="mb-2 text-lg font-medium text-white">Email verification required</p>
+          <p className="mb-4 text-sm text-zinc-400">
+            Click the link we sent you first. The top banner stays until your email is verified.
+          </p>
+          <p className="mb-6 rounded-xl border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-100">
+            Check your spam / junk folder if you don&apos;t see the email.
+          </p>
+          <div className="flex flex-col justify-center gap-3 sm:flex-row">
+            <Link href="/verify-email">
+              <Button className="w-full gap-2 bg-amber-500 text-black hover:bg-amber-400 sm:w-auto">
+                Verify email
               </Button>
             </Link>
             <Link href={`${reportPath}/demo/report`}>

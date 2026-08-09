@@ -7,6 +7,7 @@ import { useSession } from 'next-auth/react';
 import { motion } from 'framer-motion';
 import { Mail } from 'lucide-react';
 import { easeOutSoft } from '@/lib/motion';
+import { isEmailVerified } from '@/lib/auth/is-email-verified';
 
 const AUTH_PATHS = ['/login', '/signup', '/verify-email', '/forgot-password', '/reset-password'];
 
@@ -14,28 +15,15 @@ function isAuthPath(pathname: string) {
   return AUTH_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
 
-function hasVerifiedEmail(value: unknown): boolean {
-  if (!value) return false;
-  if (value instanceof Date) return !Number.isNaN(value.getTime());
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return false;
-    return true;
-  }
-  return true;
-}
-
 export function EmailVerificationBanner() {
   const pathname = usePathname();
   const { data: session, status, update } = useSession();
 
+  const verified = isEmailVerified(session?.user?.emailVerified);
   const show =
-    status === 'authenticated' &&
-    !!session?.user &&
-    !hasVerifiedEmail(session.user.emailVerified) &&
-    !isAuthPath(pathname);
+    status === 'authenticated' && !!session?.user && !verified && !isAuthPath(pathname);
 
-  // If verified in another tab / after clicking the email link, drop the banner ASAP
+  // Re-check session after verifying in another tab — never hide unless DB/JWT says verified
   useEffect(() => {
     if (!show) return;
 

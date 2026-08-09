@@ -71,7 +71,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           try {
             const dbUser = await prisma.user.findUnique({ where: { id: userId } });
             if (dbUser) {
-              // DB is source of truth after verify-email — clears banner + unlocks replays
+              // DB only — never trust client-supplied emailVerified (banner must stay until real verify)
               token.emailVerified = dbUser.emailVerified;
               token.username = dbUser.username;
               token.role = dbUser.role;
@@ -80,12 +80,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             }
           } catch (err) {
             console.error('[auth jwt update]', err);
-            if (session && 'emailVerified' in session && session.emailVerified) {
-              token.emailVerified = session.emailVerified;
-            }
           }
-        } else if (session && 'emailVerified' in session) {
-          token.emailVerified = session.emailVerified ?? null;
         }
 
         if (session) {

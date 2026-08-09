@@ -94,9 +94,7 @@ export const authConfig = {
         token.name = session.name ?? token.name;
         token.picture = session.image ?? token.picture;
         if (session.username) token.username = session.username;
-        if ('emailVerified' in session) {
-          token.emailVerified = session.emailVerified ?? null;
-        }
+        // Do not accept client-supplied emailVerified here (edge). Node jwt in auth.ts syncs from DB.
       }
 
       return token;
