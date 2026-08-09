@@ -54,7 +54,7 @@ async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T>
   const url = `${BASE_URL}${path}`;
   const headers: Record<string, string> = {
     Accept: 'application/json',
-    'User-Agent': 'ClutchCoreAI/1.0 (+https://clutchcore-web.vercel.app)',
+    'User-Agent': 'ClutchCore/1.0 (+https://clutchcore-web.vercel.app)',
     Referer: 'https://statlocker.gg/ranked-leaderboard',
     Origin: 'https://statlocker.gg',
   };
