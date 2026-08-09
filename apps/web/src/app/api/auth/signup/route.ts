@@ -61,7 +61,7 @@ export async function POST(request: Request) {
       },
     });
 
-    const emailSent = await sendVerificationEmail(normalizedEmail, token, username);
+    const emailResult = await sendVerificationEmail(normalizedEmail, token, username);
     await prisma.userStats.create({ data: { userId: user.id } });
 
     await setUserSession({
@@ -76,10 +76,14 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: emailSent
-        ? 'Account created. Please verify your email.'
-        : 'Account created, but we could not send the verification email. Use Resend on the verify page.',
-      emailSent,
+      message: emailResult.ok
+        ? emailResult.loggedOnly
+          ? 'Account created. Dev mode: verification link was logged to the server console.'
+          : 'Account created. Please verify your email.'
+        : `Account created, but we could not send the verification email${
+            emailResult.error ? `: ${emailResult.error}` : ''
+          }. Use Resend on the verify page.`,
+      emailSent: emailResult.ok && !emailResult.loggedOnly,
       userId: user.id,
       redirectTo: '/verify-email?registered=1',
     });
