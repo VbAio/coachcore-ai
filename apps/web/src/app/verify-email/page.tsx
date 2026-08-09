@@ -133,10 +133,14 @@ function VerifyEmailContent() {
               : 'Enter the email you signed up with to resend the link.'}
           </p>
         )}
-        <p className="mt-2 text-xs text-zinc-600">
-          Link expires in 24 hours. Check spam if you don&apos;t see it.
-        </p>
       </div>
+
+      <p
+        className="rounded-xl border-2 border-amber-400/50 bg-amber-500/15 px-4 py-4 text-base font-semibold leading-snug text-amber-100 sm:text-lg"
+        role="status"
+      >
+        Can&apos;t find it? Check your spam / junk folder — verification emails often land there.
+      </p>
 
       {!session?.user?.email && (
         <FormField label="Email">
@@ -158,6 +162,8 @@ function VerifyEmailContent() {
       <SubmitButton type="button" loading={resending} onClick={resend}>
         Resend verification email
       </SubmitButton>
+
+      <p className="text-xs text-zinc-600">Link expires in 24 hours.</p>
 
       <p className="text-sm text-zinc-500">
         <Link href="/rocket-league/replays" className="text-purple-400 hover:text-purple-300">

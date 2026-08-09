@@ -141,7 +141,7 @@ export async function PUT(request: Request) {
       success: true,
       message: emailResult.loggedOnly
         ? 'Dev mode: verification link was logged to the server console (RESEND_API_KEY not set).'
-        : 'Verification email sent. Check your inbox (and spam).',
+        : 'Verification email sent. Check your inbox — and your spam / junk folder.',
     });
   } catch (err) {
     console.error('[resend-verification]', err);
