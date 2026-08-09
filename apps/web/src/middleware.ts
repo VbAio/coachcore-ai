@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { middlewareAuth } from '@/middleware-auth';
+import { isEmailVerified } from '@/lib/auth/is-email-verified';
 
 const authRoutes = ['/login', '/signup', '/forgot-password', '/reset-password'];
 const protectedRoutes = ['/dashboard', '/upload', '/settings', '/report'];
@@ -10,21 +11,11 @@ function isReplayUploadPath(pathname: string) {
   return /^\/[a-z0-9-]+\/replays\/?$/.test(pathname);
 }
 
-function isVerifiedEmail(value: unknown): boolean {
-  if (value == null || value === false) return false;
-  if (value instanceof Date) return !Number.isNaN(value.getTime());
-  if (typeof value === 'number') return value > 0;
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    return trimmed.length > 0 && trimmed !== 'null' && trimmed !== 'undefined';
-  }
-  return Boolean(value);
-}
-
 export default middlewareAuth((req) => {
   const { pathname } = req.nextUrl;
   const isLoggedIn = !!req.auth;
-  const isVerified = isVerifiedEmail(req.auth?.user?.emailVerified);
+  // Banner + replay upload stay locked until email is actually verified
+  const isVerified = isEmailVerified(req.auth?.user?.emailVerified);
 
   const isAuthRoute = authRoutes.some((r) => pathname.startsWith(r));
   const isProtected =

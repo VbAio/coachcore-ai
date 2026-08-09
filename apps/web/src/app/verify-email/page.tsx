@@ -7,6 +7,7 @@ import { useSession } from 'next-auth/react';
 import { AuthLayout } from '@/components/auth/auth-layout';
 import { SubmitButton, FormAlert, FormField, TextInput } from '@/components/auth/form-fields';
 import { Mail, CheckCircle2 } from 'lucide-react';
+import { isEmailVerified } from '@/lib/auth/is-email-verified';
 
 function VerifyEmailContent() {
   const router = useRouter();
@@ -18,11 +19,20 @@ function VerifyEmailContent() {
 
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
+  const [verifiedOk, setVerifiedOk] = useState(false);
   const [statusUi, setStatusUi] = useState<'idle' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const [emailInput, setEmailInput] = useState('');
 
   const resendEmail = session?.user?.email ?? emailInput.trim();
+  const alreadyVerified = isEmailVerified(session?.user?.emailVerified);
+
+  useEffect(() => {
+    // Already verified (e.g. returned here) — banner can clear; send to replays
+    if (!token && alreadyVerified && status === 'authenticated') {
+      router.replace('/rocket-league/replays');
+    }
+  }, [token, alreadyVerified, status, router]);
 
   useEffect(() => {
     if (!token || verifyingRef.current) return;
@@ -38,30 +48,31 @@ function VerifyEmailContent() {
           body: JSON.stringify({ token }),
         });
         const data = await res.json();
-        if (res.ok) {
+        if (res.ok && data.emailVerified) {
+          setVerifiedOk(true);
           setStatusUi('success');
           setMessage('Email verified! Replay analysis is unlocked.');
 
-          // Sync client session (banner + middleware JWT)
+          // Only clear the top banner after a real successful verify
           if (status === 'authenticated' || data.sessionRefreshed) {
-            await update({
-              emailVerified: data.emailVerified ?? new Date().toISOString(),
-            });
+            await update({ emailVerified: data.emailVerified });
           } else {
-            // Still try — no-op if logged out
             await update().catch(() => undefined);
           }
 
           router.refresh();
-          const next = typeof data.redirectTo === 'string' ? data.redirectTo : '/rocket-league/replays';
+          const next =
+            typeof data.redirectTo === 'string' ? data.redirectTo : '/rocket-league/replays';
           setTimeout(() => {
             router.push(next);
           }, 1200);
         } else {
+          setVerifiedOk(false);
           setStatusUi('error');
           setMessage(data.error ?? 'Verification failed');
         }
       } catch {
+        setVerifiedOk(false);
         setStatusUi('error');
         setMessage('Verification failed. Please try again.');
       } finally {
@@ -88,6 +99,7 @@ function VerifyEmailContent() {
         body: JSON.stringify({ email: resendEmail }),
       });
       const data = await res.json();
+      // Resend must NOT clear the banner or unlock replays — only the email link does
       setMessage(res.ok ? data.message : data.error);
       setStatusUi(res.ok ? 'success' : 'error');
     } catch {
@@ -107,7 +119,7 @@ function VerifyEmailContent() {
     );
   }
 
-  if (statusUi === 'success' && token) {
+  if (verifiedOk && token) {
     return (
       <div className="py-4 text-center">
         <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-400" />
@@ -124,7 +136,7 @@ function VerifyEmailContent() {
         <p className="text-zinc-300">
           {justRegistered
             ? 'Account created! Check your inbox for a verification link — then you can upload replays and sync settings.'
-            : 'Verify your email to unlock saving heroes, replays, and synced settings.'}
+            : 'You must verify your email before using Replay Analysis and synced settings.'}
         </p>
         {(session?.user?.email || emailInput) && (
           <p className="mt-2 text-sm text-zinc-500">
@@ -166,9 +178,11 @@ function VerifyEmailContent() {
       <p className="text-xs text-zinc-600">Link expires in 24 hours.</p>
 
       <p className="text-sm text-zinc-500">
-        <Link href="/rocket-league/replays" className="text-purple-400 hover:text-purple-300">
-          Continue to Replay Analysis
+        <Link href="/dashboard" className="text-purple-400 hover:text-purple-300">
+          Back to dashboard
         </Link>
+        <span className="mx-2 text-zinc-600">·</span>
+        <span className="text-zinc-600">Replay Analysis unlocks after you verify</span>
       </p>
     </div>
   );
