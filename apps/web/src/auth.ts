@@ -66,11 +66,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
 
       if (trigger === 'update') {
-        const userId = (token.id as string | undefined) ?? undefined;
+        const userId = (token.id as string | undefined) ?? (token.sub as string | undefined);
         if (userId) {
           try {
             const dbUser = await prisma.user.findUnique({ where: { id: userId } });
             if (dbUser) {
+              // DB is source of truth after verify-email — clears banner + unlocks replays
               token.emailVerified = dbUser.emailVerified;
               token.username = dbUser.username;
               token.role = dbUser.role;
@@ -79,16 +80,33 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             }
           } catch (err) {
             console.error('[auth jwt update]', err);
+            if (session && 'emailVerified' in session && session.emailVerified) {
+              token.emailVerified = session.emailVerified;
+            }
           }
+        } else if (session && 'emailVerified' in session) {
+          token.emailVerified = session.emailVerified ?? null;
         }
 
         if (session) {
           if (session.name) token.name = session.name;
           if (session.image) token.picture = session.image;
           if (session.username) token.username = session.username;
-          if ('emailVerified' in session) {
-            token.emailVerified = session.emailVerified ?? null;
+        }
+      }
+
+      // If still unverified in the JWT, re-check DB so verify-from-email unlocks without re-login
+      if (token.id && !token.emailVerified) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: { emailVerified: true },
+          });
+          if (dbUser?.emailVerified) {
+            token.emailVerified = dbUser.emailVerified;
           }
+        } catch (err) {
+          console.error('[auth jwt emailVerified sync]', err);
         }
       }
 

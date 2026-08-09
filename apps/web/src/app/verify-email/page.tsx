@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
@@ -11,20 +11,22 @@ import { Mail, CheckCircle2 } from 'lucide-react';
 function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { data: session, update } = useSession();
+  const { data: session, status, update } = useSession();
   const token = searchParams.get('token');
   const justRegistered = searchParams.get('registered');
+  const verifyingRef = useRef(false);
 
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
-  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [statusUi, setStatusUi] = useState<'idle' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const [emailInput, setEmailInput] = useState('');
 
   const resendEmail = session?.user?.email ?? emailInput.trim();
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || verifyingRef.current) return;
+    verifyingRef.current = true;
 
     async function verify() {
       setLoading(true);
@@ -32,34 +34,48 @@ function VerifyEmailContent() {
         const res = await fetch('/api/auth/verify-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ token }),
         });
         const data = await res.json();
         if (res.ok) {
-          setStatus('success');
-          setMessage('Email verified! You now have full access.');
-          // Refresh JWT so middleware unlocks uploads/settings without re-login
-          await update({ emailVerified: new Date().toISOString() });
-          setTimeout(() => router.push('/dashboard'), 2000);
+          setStatusUi('success');
+          setMessage('Email verified! Replay analysis is unlocked.');
+
+          // Sync client session (banner + middleware JWT)
+          if (status === 'authenticated' || data.sessionRefreshed) {
+            await update({
+              emailVerified: data.emailVerified ?? new Date().toISOString(),
+            });
+          } else {
+            // Still try — no-op if logged out
+            await update().catch(() => undefined);
+          }
+
+          router.refresh();
+          const next = typeof data.redirectTo === 'string' ? data.redirectTo : '/rocket-league/replays';
+          setTimeout(() => {
+            router.push(next);
+          }, 1200);
         } else {
-          setStatus('error');
+          setStatusUi('error');
           setMessage(data.error ?? 'Verification failed');
         }
       } catch {
-        setStatus('error');
+        setStatusUi('error');
         setMessage('Verification failed. Please try again.');
       } finally {
         setLoading(false);
       }
     }
 
-    verify();
-  }, [token, router, update]);
+    void verify();
+  }, [token, router, update, status]);
 
   async function resend() {
     if (!resendEmail) {
       setMessage('Enter your email address to resend the verification link.');
-      setStatus('error');
+      setStatusUi('error');
       return;
     }
 
@@ -73,10 +89,10 @@ function VerifyEmailContent() {
       });
       const data = await res.json();
       setMessage(res.ok ? data.message : data.error);
-      setStatus(res.ok ? 'success' : 'error');
+      setStatusUi(res.ok ? 'success' : 'error');
     } catch {
       setMessage('Failed to resend email');
-      setStatus('error');
+      setStatusUi('error');
     } finally {
       setResending(false);
     }
@@ -91,11 +107,12 @@ function VerifyEmailContent() {
     );
   }
 
-  if (status === 'success' && token) {
+  if (statusUi === 'success' && token) {
     return (
       <div className="py-4 text-center">
         <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-400" />
         <p className="mt-4 text-emerald-300">{message}</p>
+        <p className="mt-2 text-sm text-zinc-500">Taking you to Replay Analysis…</p>
       </div>
     );
   }
@@ -135,7 +152,7 @@ function VerifyEmailContent() {
       )}
 
       {message && (
-        <FormAlert type={status === 'error' ? 'error' : 'success'} message={message} />
+        <FormAlert type={statusUi === 'error' ? 'error' : 'success'} message={message} />
       )}
 
       <SubmitButton type="button" loading={resending} onClick={resend}>
@@ -143,8 +160,8 @@ function VerifyEmailContent() {
       </SubmitButton>
 
       <p className="text-sm text-zinc-500">
-        <Link href="/dashboard" className="text-purple-400 hover:text-purple-300">
-          Continue to dashboard
+        <Link href="/rocket-league/replays" className="text-purple-400 hover:text-purple-300">
+          Continue to Replay Analysis
         </Link>
       </p>
     </div>

@@ -24,6 +24,7 @@ function allowConsoleEmailFallback(): boolean {
     return false;
   }
   return process.env.ALLOW_CONSOLE_EMAIL !== '0';
+}
 
 async function sendEmail(to: string, subject: string, html: string): Promise<SendEmailResult> {
   const resend = getResend();
