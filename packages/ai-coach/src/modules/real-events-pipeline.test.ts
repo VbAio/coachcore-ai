@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { extractFeatures } from '@coachcore/replay-parser';
+import { extractFeatures } from '@clutchcore/replay-parser';
 import { assertEvidenceBacked, detectMistakes } from './mistake-detector.js';
 import { buildReportFromPipeline } from '../pipeline/coaching-pipeline.js';
 import { OpenAICoachProvider } from '../coach/openai-coach-provider.js';
-import { buildMatchTimeline, type ParsedReplay } from '@coachcore/shared';
+import { buildMatchTimeline, type ParsedReplay } from '@clutchcore/shared';
 
 const realEventsReplay: ParsedReplay = {
   metadata: {

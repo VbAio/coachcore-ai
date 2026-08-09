@@ -4,7 +4,7 @@ import type {
   RlParsedReplay,
   RlPracticeDrill,
   RlSeverity,
-} from '@coachcore/shared';
+} from '@clutchcore/shared';
 
 const BANNED = [
   'rotate better',

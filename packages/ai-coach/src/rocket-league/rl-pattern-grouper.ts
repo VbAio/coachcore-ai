@@ -1,4 +1,4 @@
-import type { RlCoachInsight, RlMistakePattern } from '@coachcore/shared';
+import type { RlCoachInsight, RlMistakePattern } from '@clutchcore/shared';
 
 export function groupRlPatterns(insights: RlCoachInsight[]): RlMistakePattern[] {
   const mistakes = insights.filter((i) => i.polarity === 'mistake');

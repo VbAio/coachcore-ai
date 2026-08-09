@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma.js';
-import type { CoachingReport, SkillScores } from '@coachcore/shared';
+import type { CoachingReport, SkillScores } from '@clutchcore/shared';
 
 type SkillHistoryPoint = { date: string; scores: Record<string, number> };
 type FavoriteHero = { hero: string; games: number; winRate: number };

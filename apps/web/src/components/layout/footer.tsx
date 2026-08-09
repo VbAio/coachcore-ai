@@ -19,12 +19,12 @@ export function Footer() {
             whileHover={{ scale: 1.08, rotate: -4 }}
             className="flex h-8 w-8 items-center justify-center rounded-lg gradient-purple text-sm font-bold"
           >
-            CC
+            Cl
           </motion.div>
-          <span className="font-bold text-white">CoachCore AI</span>
+          <span className="font-bold text-white">ClutchCore</span>
         </div>
         <p className="text-sm text-zinc-500">
-          © {new Date().getFullYear()} CoachCore AI. Not affiliated with Valve Corporation.
+          © {new Date().getFullYear()} ClutchCore. Not affiliated with Valve Corporation.
         </p>
         <div className="flex gap-6 text-sm text-zinc-400">
           <Link href="/deadlock" className="link-underline hover:text-purple-300">

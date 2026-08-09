@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildMatchTimeline, type ParsedReplay } from '@coachcore/shared';
+import { buildMatchTimeline, type ParsedReplay } from '@clutchcore/shared';
 
 describe('buildMatchTimeline', () => {
   it('assigns labels and groups position tracks by playerId', () => {

@@ -7,16 +7,16 @@ COPY apps/api/package.json ./apps/api/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/replay-parser/package.json ./packages/replay-parser/
 COPY packages/ai-coach/package.json ./packages/ai-coach/
-RUN npm ci --workspace=@coachcore/api
+RUN npm ci --workspace=@clutchcore/api
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npm run build -w @coachcore/shared
-RUN npm run build -w @coachcore/replay-parser
-RUN npm run build -w @coachcore/ai-coach
-RUN npm run db:generate -w @coachcore/api
-RUN npm run build -w @coachcore/api
+RUN npm run build -w @clutchcore/shared
+RUN npm run build -w @clutchcore/replay-parser
+RUN npm run build -w @clutchcore/ai-coach
+RUN npm run db:generate -w @clutchcore/api
+RUN npm run build -w @clutchcore/api
 
 FROM node:22-alpine AS runner
 WORKDIR /app

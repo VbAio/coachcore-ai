@@ -1,7 +1,7 @@
 'use client';
 
-import type { MatchTimelinePurchase } from '@coachcore/shared';
-import { categoryColor } from '@coachcore/shared';
+import type { MatchTimelinePurchase } from '@clutchcore/shared';
+import { categoryColor } from '@clutchcore/shared';
 import { formatClock } from './format';
 
 interface Props {

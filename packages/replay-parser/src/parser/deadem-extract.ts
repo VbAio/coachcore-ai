@@ -8,8 +8,8 @@ import type {
   PositionSample,
   ReplayPlayer,
   TeamFight,
-} from '@coachcore/shared';
-import { resolveItemDef } from '@coachcore/shared';
+} from '@clutchcore/shared';
+import { resolveItemDef } from '@clutchcore/shared';
 import {
   InterceptorStage,
   MessagePacketType,
@@ -187,7 +187,7 @@ function nextEventId(type: string, ts: number): string {
 }
 
 /**
- * Parse a Deadlock .dem buffer with deadem into CoachCore ParsedReplay.
+ * Parse a Deadlock .dem buffer with deadem into ClutchCore ParsedReplay.
  */
 export async function extractWithDeadem(
   buffer: Buffer,

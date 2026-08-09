@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, useReducedMotion } from 'framer-motion';
-import type { MatchSummaryStats } from '@coachcore/shared';
+import type { MatchSummaryStats } from '@clutchcore/shared';
 import { GlassCard } from './ui';
 import { formatClock } from '../vod-review/format';
 import { easeOutSoft } from '@/lib/motion';

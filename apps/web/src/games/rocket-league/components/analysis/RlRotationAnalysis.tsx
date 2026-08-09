@@ -1,6 +1,6 @@
 'use client';
 
-import type { RlRotationAnalysis as Rot } from '@coachcore/shared';
+import type { RlRotationAnalysis as Rot } from '@clutchcore/shared';
 import { RlGlass, RlSectionTitle } from './ui';
 
 export function RlRotationAnalysis({ data }: { data: Rot }) {

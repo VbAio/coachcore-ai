@@ -9,7 +9,7 @@ function getResend() {
 function getFromEmail() {
   // Prefer a verified-domain From address so ANY signup email can receive mail.
   // Sandbox (onboarding@resend.dev) only delivers to the Resend account owner's inbox.
-  return process.env.EMAIL_FROM?.trim() || 'CoachCore AI <onboarding@resend.dev>';
+  return process.env.EMAIL_FROM?.trim() || 'ClutchCore <onboarding@resend.dev>';
 }
 
 export type SendEmailResult = {
@@ -41,7 +41,7 @@ function mapResendError(message: string | undefined, to: string): string {
   ) {
     return (
       `Cannot send to ${to} yet. In Resend, verify your own domain (Domains → Add), ` +
-      `then set Vercel EMAIL_FROM to e.g. "CoachCore AI <noreply@yourdomain.com>" and redeploy. ` +
+      `then set Vercel EMAIL_FROM to e.g. "ClutchCore <noreply@yourdomain.com>" and redeploy. ` +
       `onboarding@resend.dev only delivers to your Resend login email.`
     );
   }
@@ -115,8 +115,8 @@ function emailLayout(content: string): string {
     <tr><td align="center">
       <table width="560" cellpadding="0" cellspacing="0" style="background:#111;border:1px solid rgba(147,51,234,0.3);border-radius:16px;padding:40px;">
         <tr><td style="text-align:center;padding-bottom:24px;">
-          <div style="display:inline-block;width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#9333ea,#6366f1);color:#fff;font-weight:bold;font-size:18px;line-height:48px;">CC</div>
-          <h1 style="color:#fff;font-size:24px;margin:16px 0 0;">CoachCore AI</h1>
+          <div style="display:inline-block;width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#9333ea,#6366f1);color:#fff;font-weight:bold;font-size:18px;line-height:48px;">Cl</div>
+          <h1 style="color:#fff;font-size:24px;margin:16px 0 0;">ClutchCore</h1>
         </td></tr>
         <tr><td style="color:#d4d4d8;font-size:15px;line-height:1.6;">${content}</td></tr>
       </table>
@@ -134,7 +134,7 @@ export async function sendVerificationEmail(
   const url = `${getConfiguredAppUrl()}/verify-email?token=${encodeURIComponent(token)}`;
   const html = emailLayout(`
     <p>Hey <strong style="color:#fff;">${username}</strong>,</p>
-    <p>Welcome to CoachCore AI! Verify your email to unlock saving heroes, replays, and synced settings across devices.</p>
+    <p>Welcome to ClutchCore! Verify your email to unlock saving heroes, replays, and synced settings across devices.</p>
     <p style="text-align:center;margin:32px 0;">
       <a href="${url}" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#9333ea,#6366f1);color:#fff;text-decoration:none;border-radius:10px;font-weight:600;">Verify Email</a>
     </p>
@@ -142,7 +142,7 @@ export async function sendVerificationEmail(
     <p style="color:#a78bfa;font-size:12px;word-break:break-all;">${url}</p>
     <p style="color:#71717a;font-size:13px;">This link expires in 24 hours. If you didn't create an account, ignore this email.</p>
   `);
-  return sendEmail(email, 'Verify your CoachCore AI account', html);
+  return sendEmail(email, 'Verify your ClutchCore account', html);
 }
 
 export async function sendPasswordResetEmail(
@@ -157,7 +157,7 @@ export async function sendPasswordResetEmail(
     </p>
     <p style="color:#71717a;font-size:13px;">This link expires in 30 minutes. If you didn't request this, you can safely ignore this email.</p>
   `);
-  return sendEmail(email, 'Reset your CoachCore AI password', html);
+  return sendEmail(email, 'Reset your ClutchCore password', html);
 }
 
 export async function sendEmailChangeConfirmation(
@@ -166,7 +166,7 @@ export async function sendEmailChangeConfirmation(
 ): Promise<SendEmailResult> {
   const url = `${getConfiguredAppUrl()}/verify-email?token=${encodeURIComponent(token)}`;
   const html = emailLayout(`
-    <p>Confirm your new email address for CoachCore AI.</p>
+    <p>Confirm your new email address for ClutchCore.</p>
     <p style="text-align:center;margin:32px 0;">
       <a href="${url}" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#9333ea,#6366f1);color:#fff;text-decoration:none;border-radius:10px;font-weight:600;">Confirm Email</a>
     </p>

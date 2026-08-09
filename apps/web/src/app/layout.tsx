@@ -7,7 +7,7 @@ import '@/games';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'CoachCore AI — Deadlock Coaching Platform',
+  title: 'ClutchCore — Deadlock Coaching Platform',
   description: 'Upload your Deadlock replay and receive professional AI coaching in minutes.',
 };
 

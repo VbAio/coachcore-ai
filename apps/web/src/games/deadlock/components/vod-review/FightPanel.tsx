@@ -1,6 +1,6 @@
 'use client';
 
-import type { MatchTimeline, TeamFightBreakdown } from '@coachcore/shared';
+import type { MatchTimeline, TeamFightBreakdown } from '@clutchcore/shared';
 import { formatClock } from './format';
 import { cn } from '@/lib/utils';
 

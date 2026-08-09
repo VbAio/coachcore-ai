@@ -3,9 +3,9 @@ import type {
   MatchSummaryStats,
   ProComparison,
   TeamFightBreakdown,
-} from '@coachcore/shared';
-import type { ParsedReplay } from '@coachcore/shared';
-import type { ExtractedFeatures } from '@coachcore/replay-parser';
+} from '@clutchcore/shared';
+import type { ParsedReplay } from '@clutchcore/shared';
+import type { ExtractedFeatures } from '@clutchcore/replay-parser';
 import type { DetectedMistake } from './mistake-detector.js';
 import { groupMistakesByCategory } from './mistake-detector.js';
 import { groupMistakePatterns } from './pattern-grouper.js';

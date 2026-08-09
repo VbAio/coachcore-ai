@@ -6,7 +6,7 @@ import type {
   RlMatchSummaryStats,
   RlParsedReplay,
   RlPlanStep,
-} from '@coachcore/shared';
+} from '@clutchcore/shared';
 import { detectRlMistakes } from './rl-mistake-detector.js';
 import { groupRlPatterns } from './rl-pattern-grouper.js';
 import { computeRlSkillScores } from './rl-score-engine.js';

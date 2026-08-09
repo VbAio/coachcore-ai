@@ -1,6 +1,6 @@
 'use client';
 
-import type { RlAiInsights } from '@coachcore/shared';
+import type { RlAiInsights } from '@clutchcore/shared';
 import { RlGlass, RlSectionTitle } from './ui';
 
 export function RlInsightPanel({ insights }: { insights: RlAiInsights }) {

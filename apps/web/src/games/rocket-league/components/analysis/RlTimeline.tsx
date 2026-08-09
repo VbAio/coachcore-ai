@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useRef, useEffect } from 'react';
-import type { RlCoachInsight, RlMatchTimeline } from '@coachcore/shared';
+import type { RlCoachInsight, RlMatchTimeline } from '@clutchcore/shared';
 import { RlGlass, RlSectionTitle, formatClock } from './ui';
 import { cn } from '@/lib/utils';
 

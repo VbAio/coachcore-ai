@@ -1,4 +1,4 @@
-import type { ParsedReplay, RlParsedReplay } from '@coachcore/shared';
+import type { ParsedReplay, RlParsedReplay } from '@clutchcore/shared';
 import type { ReplayParser } from './replay-parser.interface.js';
 import { buildRlDemoFixture } from './rl-demo-fixture.js';
 

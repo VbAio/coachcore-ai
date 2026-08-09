@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
-import { createCoachProvider } from '@coachcore/ai-coach';
-import type { CoachingReport, ChatCoachMessage } from '@coachcore/shared';
+import { createCoachProvider } from '@clutchcore/ai-coach';
+import type { CoachingReport, ChatCoachMessage } from '@clutchcore/shared';
 import { getDashboardStatsForUser } from '../services/user-stats.js';
 
 export const coachRouter = Router();

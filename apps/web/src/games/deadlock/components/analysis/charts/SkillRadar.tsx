@@ -9,7 +9,7 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from 'recharts';
-import type { SkillAxisMeta } from '@coachcore/shared';
+import type { SkillAxisMeta } from '@clutchcore/shared';
 import { GlassCard, SectionTitle } from '../ui';
 
 export function SkillRadar({ axes }: { axes: SkillAxisMeta[] }) {

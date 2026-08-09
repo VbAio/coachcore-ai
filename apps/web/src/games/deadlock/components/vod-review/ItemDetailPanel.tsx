@@ -1,8 +1,8 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import type { ItemPurchaseAnalysis, MatchTimelinePurchase } from '@coachcore/shared';
-import { categoryColor, resolveItemDef } from '@coachcore/shared';
+import type { ItemPurchaseAnalysis, MatchTimelinePurchase } from '@clutchcore/shared';
+import { categoryColor, resolveItemDef } from '@clutchcore/shared';
 import { X } from 'lucide-react';
 import { formatClock } from './format';
 import { CategoryDot, ItemIcon } from './ItemIcon';

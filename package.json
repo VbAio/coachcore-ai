@@ -1,5 +1,5 @@
 {
-  "name": "coachcore-ai",
+  "name": "clutchcore",
   "version": "1.0.0",
   "private": true,
   "workspaces": [
@@ -7,15 +7,15 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev -w @coachcore/web\" \"npm run dev -w @coachcore/api\"",
-    "dev:web": "npm run dev -w @coachcore/web",
-    "dev:api": "npm run dev -w @coachcore/api",
-    "build": "npm run build -w @coachcore/shared && npm run build -w @coachcore/replay-parser && npm run build -w @coachcore/ai-coach && npm run build -w @coachcore/api && npm run build -w @coachcore/web",
+    "dev": "concurrently \"npm run dev -w @clutchcore/web\" \"npm run dev -w @clutchcore/api\"",
+    "dev:web": "npm run dev -w @clutchcore/web",
+    "dev:api": "npm run dev -w @clutchcore/api",
+    "build": "npm run build -w @clutchcore/shared && npm run build -w @clutchcore/replay-parser && npm run build -w @clutchcore/ai-coach && npm run build -w @clutchcore/api && npm run build -w @clutchcore/web",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "db:generate": "npm run db:generate -w @coachcore/api",
-    "db:migrate": "npm run db:migrate -w @coachcore/api",
-    "db:push": "npm run db:push -w @coachcore/api"
+    "db:generate": "npm run db:generate -w @clutchcore/api",
+    "db:migrate": "npm run db:migrate -w @clutchcore/api",
+    "db:push": "npm run db:push -w @clutchcore/api"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

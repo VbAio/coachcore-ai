@@ -3,8 +3,8 @@ import type {
   BuildReview,
   ItemPurchaseAnalysis,
   ParsedReplay,
-} from '@coachcore/shared';
-import { buildMatchTimeline, resolveItemDef } from '@coachcore/shared';
+} from '@clutchcore/shared';
+import { buildMatchTimeline, resolveItemDef } from '@clutchcore/shared';
 
 function formatClock(seconds: number): string {
   const m = Math.floor(seconds / 60);

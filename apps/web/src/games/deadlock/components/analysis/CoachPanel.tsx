@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import type { CoachInsight } from '@coachcore/shared';
+import type { CoachInsight } from '@clutchcore/shared';
 import { formatClock } from '../vod-review/format';
 import { GlassCard, SectionTitle } from './ui';
 import { easeOutSoft } from '@/lib/motion';

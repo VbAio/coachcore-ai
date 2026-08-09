@@ -1,4 +1,4 @@
-# CoachCore AI
+# ClutchCore
 
 AI-powered coaching platform for Valve's **Deadlock**. Upload `.dem` replay files and receive detailed, actionable coaching reports — not just statistics.
 
@@ -35,7 +35,7 @@ No other files need changes.
 ## Architecture
 
 ```
-coachcore-ai/
+clutchcore/
 ├── apps/
 │   ├── web/          # Next.js 15 frontend (React, Tailwind, Framer Motion)
 │   └── api/          # Express API (Prisma, BullMQ, WebSockets)
@@ -83,7 +83,7 @@ Step-by-step: **[docs/DEPLOY.md](docs/DEPLOY.md)**
 
 ```bash
 # Clone and install
-cd coachcore-ai
+cd clutchcore
 cp .env.example .env
 
 # Start infrastructure

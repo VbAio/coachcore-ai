@@ -1,6 +1,6 @@
 'use client';
 
-import type { RlCoachInsight } from '@coachcore/shared';
+import type { RlCoachInsight } from '@clutchcore/shared';
 import { RlGlass, RlSectionTitle, formatClock } from './ui';
 
 export function RlCoachPanel({ insight }: { insight: RlCoachInsight | null }) {

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
-import type { CoachInsight, CoachingReportPayload } from '@coachcore/shared';
+import type { CoachInsight, CoachingReportPayload } from '@clutchcore/shared';
 import { easeOutSoft, fadeUp, staggerContainer } from '@/lib/motion';
 import { adaptReport } from './adapter';
 import { MatchSummary } from './MatchSummary';

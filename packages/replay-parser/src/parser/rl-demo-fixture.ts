@@ -5,7 +5,7 @@ import type {
   RlParsedReplay,
   RlPlayer,
   RlPositionSample,
-} from '@coachcore/shared';
+} from '@clutchcore/shared';
 
 /** High-fidelity synthetic 3v3 Doubles-style timeline for UI / offline coaching. */
 export function buildRlDemoFixture(subjectName = 'You'): RlParsedReplay {

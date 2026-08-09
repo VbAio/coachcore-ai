@@ -96,7 +96,7 @@ function moduleDefault(gameId: string): string {
 
 export function getPageTitle(gameId: string, route: GameRouteDefinition): string {
   const game = getGameModule(gameId);
-  return `${route.title} · ${game?.name ?? 'CoachCore'}`;
+  return `${route.title} · ${game?.name ?? 'ClutchCore'}`;
 }
 
 export function gameSupportsFeature(gameId: string, feature: string): boolean {

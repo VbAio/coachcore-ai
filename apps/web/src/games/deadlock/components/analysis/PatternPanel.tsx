@@ -1,6 +1,6 @@
 'use client';
 
-import type { MistakePattern } from '@coachcore/shared';
+import type { MistakePattern } from '@clutchcore/shared';
 import { formatClock } from '../vod-review/format';
 import { GlassCard, SectionTitle } from './ui';
 

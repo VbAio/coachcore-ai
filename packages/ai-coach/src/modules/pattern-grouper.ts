@@ -1,4 +1,4 @@
-import type { MistakeCategory, MistakePattern, MistakeSeverity } from '@coachcore/shared';
+import type { MistakeCategory, MistakePattern, MistakeSeverity } from '@clutchcore/shared';
 import type { DetectedMistake } from './mistake-detector.js';
 
 const SEVERITY_RANK: Record<string, number> = {

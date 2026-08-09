@@ -1,6 +1,6 @@
 'use client';
 
-import type { MatchTimelinePurchase } from '@coachcore/shared';
+import type { MatchTimelinePurchase } from '@clutchcore/shared';
 import { cn } from '@/lib/utils';
 import { ItemIcon } from './ItemIcon';
 

@@ -1,4 +1,4 @@
-import type { ParsedReplay } from '@coachcore/shared';
+import type { ParsedReplay } from '@clutchcore/shared';
 
 /**
  * Pluggable replay parser interface.

@@ -2,13 +2,13 @@ import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import { authConfig } from '@/auth.config';
 import { prisma } from '@/lib/db';
-import { coachCoreAdapter } from '@/lib/auth/prisma-adapter';
+import { clutchCoreAdapter } from '@/lib/auth/prisma-adapter';
 import { generateUniqueUsername } from '@/lib/auth/user-service';
 import { generateToken, tokenExpiresDays } from '@/lib/auth/tokens';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
-  adapter: coachCoreAdapter(prisma),
+  adapter: clutchCoreAdapter(prisma),
   secret: process.env.AUTH_SECRET,
   debug: process.env.AUTH_DEBUG === 'true',
   logger: {

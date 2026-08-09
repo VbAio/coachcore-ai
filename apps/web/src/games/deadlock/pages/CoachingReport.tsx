@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '@/lib/api';
-import type { CoachingReport, CoachingReportPayload, MatchTimeline } from '@coachcore/shared';
+import type { CoachingReport, CoachingReportPayload, MatchTimeline } from '@clutchcore/shared';
 import type { GamePageProps } from '@/games/types';
 import { PremiumAnalysisShell } from '../components/analysis/PremiumAnalysisShell';
 import { AnalysisSkeleton } from '../components/analysis/AnalysisSkeleton';

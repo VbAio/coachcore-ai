@@ -3,9 +3,9 @@ import type {
   MatchPhase,
   MistakeCategory,
   MistakeSeverity,
-} from '@coachcore/shared';
-import type { ExtractedFeatures } from '@coachcore/replay-parser';
-import type { ParsedReplay } from '@coachcore/shared';
+} from '@clutchcore/shared';
+import type { ExtractedFeatures } from '@clutchcore/replay-parser';
+import type { ParsedReplay } from '@clutchcore/shared';
 
 export interface DetectedMistake extends CoachInsight {
   id: string;

@@ -1,4 +1,4 @@
-import type { ParsedReplay, ReplayMetadata, CombatEvent, PositionSample } from '@coachcore/shared';
+import type { ParsedReplay, ReplayMetadata, CombatEvent, PositionSample } from '@clutchcore/shared';
 import type { ReplayParser } from './replay-parser.interface.js';
 import { extractWithDeadem } from './deadem-extract.js';
 

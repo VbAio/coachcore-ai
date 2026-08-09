@@ -36,10 +36,10 @@ export function GameShell({
               whileTap={{ scale: 0.96 }}
               className="flex h-8 w-8 items-center justify-center rounded-lg gradient-purple text-sm font-bold"
             >
-              CC
+              Cl
             </motion.div>
             <span className="hidden font-bold text-white transition-colors group-hover:text-purple-200 sm:inline">
-              CoachCore
+              ClutchCore
             </span>
           </Link>
           <span className="hidden text-zinc-600 sm:inline">/</span>

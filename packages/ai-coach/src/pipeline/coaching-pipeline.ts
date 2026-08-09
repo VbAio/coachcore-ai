@@ -1,5 +1,5 @@
-import type { CoachingReport, ParsedReplay } from '@coachcore/shared';
-import { extractFeatures } from '@coachcore/replay-parser';
+import type { CoachingReport, ParsedReplay } from '@clutchcore/shared';
+import { extractFeatures } from '@clutchcore/replay-parser';
 import type { CoachProvider } from '../coach/coach-provider.interface.js';
 import { MockCoachProvider } from '../coach/mock-coach-provider.js';
 import { OpenAICoachProvider } from '../coach/openai-coach-provider.js';

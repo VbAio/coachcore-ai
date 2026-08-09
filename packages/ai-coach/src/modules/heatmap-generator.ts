@@ -1,5 +1,5 @@
-import type { HeatmapData, ParsedReplay } from '@coachcore/shared';
-import type { ExtractedFeatures } from '@coachcore/replay-parser';
+import type { HeatmapData, ParsedReplay } from '@clutchcore/shared';
+import type { ExtractedFeatures } from '@clutchcore/replay-parser';
 
 export function generateHeatmaps(
   replay: ParsedReplay,

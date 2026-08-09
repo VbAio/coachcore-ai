@@ -1,6 +1,6 @@
 'use client';
 
-import type { AiInsights } from '@coachcore/shared';
+import type { AiInsights } from '@clutchcore/shared';
 import { GlassCard, SectionTitle } from './ui';
 
 export function InsightPanel({ insights }: { insights: AiInsights }) {

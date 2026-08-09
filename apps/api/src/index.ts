@@ -51,7 +51,7 @@ app.get('/health', (_req, res) => {
   const warning = getStorageWarning();
   res.json({
     status: 'ok',
-    service: 'coachcore-api',
+    service: 'clutchcore-api',
     storage: getStorageProvider(),
     localDev: process.env.LOCAL_DEV === 'true',
     maxReplaySizeMb: getMaxReplaySizeMb(),
@@ -61,7 +61,7 @@ app.get('/health', (_req, res) => {
 
 app.get('/api/docs', (_req, res) => {
   res.json({
-    name: 'CoachCore AI API',
+    name: 'ClutchCore API',
     version: '1.0.0',
     endpoints: {
       'GET /health': 'Health check',
@@ -91,7 +91,7 @@ setupWebSocket(server);
 
 // Listen first so Railway healthchecks succeed even if the worker is misconfigured.
 server.listen(port, '0.0.0.0', () => {
-  console.log(`CoachCore API running on http://0.0.0.0:${port}`);
+  console.log(`ClutchCore API running on http://0.0.0.0:${port}`);
   console.log(`Storage provider: ${getStorageProvider()}`);
   console.log(`LOCAL_DEV: ${process.env.LOCAL_DEV === 'true'}`);
   try {

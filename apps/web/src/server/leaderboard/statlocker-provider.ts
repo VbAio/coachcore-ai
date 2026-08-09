@@ -34,7 +34,7 @@ export interface StatlockerRankedResponse {
   totalPages: number;
 }
 
-/** Map CoachCore region → Statlocker query param (omit for Global). */
+/** Map ClutchCore region → Statlocker query param (omit for Global). */
 export const STATLOCKER_REGION_MAP: Record<string, string | undefined> = {
   Global: undefined,
   NAmerica: 'NA',
@@ -54,7 +54,7 @@ async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T>
   const url = `${BASE_URL}${path}`;
   const headers: Record<string, string> = {
     Accept: 'application/json',
-    'User-Agent': 'CoachCoreAI/1.0 (+https://coachcore-ai-web.vercel.app)',
+    'User-Agent': 'ClutchCore/1.0 (+https://clutchcore-web.vercel.app)',
     Referer: 'https://statlocker.gg/ranked-leaderboard',
     Origin: 'https://statlocker.gg',
   };

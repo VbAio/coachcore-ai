@@ -1,4 +1,4 @@
 {
   "installCommand": "cd ../.. && npm install",
-  "buildCommand": "cd ../.. && npm run db:generate && npm run build -w @coachcore/shared && npm run build -w @coachcore/web"
+  "buildCommand": "cd ../.. && npm run db:generate && npm run build -w @clutchcore/shared && npm run build -w @clutchcore/web"
 }

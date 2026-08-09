@@ -12,7 +12,7 @@ import {
   Filter,
   Hammer,
 } from 'lucide-react';
-import { lookupDeadlockItem, categoryColor, type DeadlockItemDef } from '@coachcore/shared';
+import { lookupDeadlockItem, categoryColor, type DeadlockItemDef } from '@clutchcore/shared';
 import { getHero, getAllHeroes } from '@/data/heroes';
 import { HeroImage } from '../hero-image';
 import { cn } from '@/lib/utils';
@@ -206,7 +206,7 @@ export function BuildLibrary() {
               Builds
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-zinc-400">
-              Community-style build browser with CoachCore notes — inspired by popular libraries, tuned for
+              Community-style build browser with ClutchCore notes — inspired by popular libraries, tuned for
               coaching (why it works, not just item icons).
             </p>
           </div>

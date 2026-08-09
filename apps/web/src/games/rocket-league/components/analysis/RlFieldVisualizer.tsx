@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import type { RlCoachInsight, RlMatchTimeline, RlVec3 } from '@coachcore/shared';
+import type { RlCoachInsight, RlMatchTimeline, RlVec3 } from '@clutchcore/shared';
 import { RlGlass, RlSectionTitle } from './ui';
 
 /** RL field approx: X ±4096, Y ±5120 (goals on Y) */

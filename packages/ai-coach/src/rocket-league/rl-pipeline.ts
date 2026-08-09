@@ -1,4 +1,4 @@
-import type { RlCoachingReport, RlParsedReplay } from '@coachcore/shared';
+import type { RlCoachingReport, RlParsedReplay } from '@clutchcore/shared';
 import { generateRlReport, polishRlInsightsWithRules } from './rl-report-generator.js';
 
 export type RlPipelineProgress = (stage: string, progress: number, message: string) => void;

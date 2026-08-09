@@ -1,6 +1,6 @@
 'use client';
 
-import type { RlSkillAxisMeta, RlSkillScores } from '@coachcore/shared';
+import type { RlSkillAxisMeta, RlSkillScores } from '@clutchcore/shared';
 import { RlGlass, RlSectionTitle } from './ui';
 
 export function RlMechanicsPanel({

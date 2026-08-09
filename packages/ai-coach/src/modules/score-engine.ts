@@ -1,5 +1,5 @@
-import type { Grade, SkillAxisMeta, SkillScores } from '@coachcore/shared';
-import type { ExtractedFeatures } from '@coachcore/replay-parser';
+import type { Grade, SkillAxisMeta, SkillScores } from '@clutchcore/shared';
+import type { ExtractedFeatures } from '@clutchcore/replay-parser';
 import type { DetectedMistake } from './mistake-detector.js';
 
 export function computeSkillScores(

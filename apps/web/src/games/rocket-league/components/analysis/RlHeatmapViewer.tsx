@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import type { RlHeatmapData } from '@coachcore/shared';
+import type { RlHeatmapData } from '@clutchcore/shared';
 import { RlGlass, RlSectionTitle } from './ui';
 import { cn } from '@/lib/utils';
 

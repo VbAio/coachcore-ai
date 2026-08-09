@@ -1,6 +1,6 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { Server } from 'http';
-import type { ReplayProcessingStatus } from '@coachcore/shared';
+import type { ReplayProcessingStatus } from '@clutchcore/shared';
 
 const clients = new Map<string, Set<WebSocket>>();
 

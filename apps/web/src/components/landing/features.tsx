@@ -29,7 +29,7 @@ export function FeaturesSection() {
             Everything a Pro Coach Would Tell You
           </h2>
           <p className="mx-auto max-w-2xl text-zinc-400">
-            CoachCore AI analyzes every aspect of your gameplay and delivers actionable coaching — not raw statistics.
+            ClutchCore analyzes every aspect of your gameplay and delivers actionable coaching — not raw statistics.
           </p>
         </FadeIn>
 
