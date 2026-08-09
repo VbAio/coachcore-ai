@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { middlewareAuth } from '@/middleware-auth';
 import { isEmailVerified } from '@/lib/auth/is-email-verified';
 
@@ -9,6 +9,27 @@ const verifiedRequiredRoutes = ['/upload', '/settings'];
 /** Game upload pages: /deadlock/replays, /fortnite/replays, etc. (not nested report URLs) */
 function isReplayUploadPath(pathname: string) {
   return /^\/[a-z0-9-]+\/replays\/?$/.test(pathname);
+}
+
+/**
+ * Stay on the hostname the browser actually opened.
+ * Avoids AUTH_URL pointing at a renamed Vercel host that has no deployment yet
+ * (e.g. Replay → login redirect → DEPLOYMENT_NOT_FOUND on clutchcore.vercel.app).
+ */
+function requestOrigin(req: NextRequest): string {
+  const host =
+    req.headers.get('x-forwarded-host')?.split(',')[0]?.trim() ||
+    req.headers.get('host')?.split(',')[0]?.trim() ||
+    req.nextUrl.host;
+  const proto =
+    req.headers.get('x-forwarded-proto')?.split(',')[0]?.trim() ||
+    req.nextUrl.protocol.replace(':', '') ||
+    'https';
+  return `${proto}://${host}`;
+}
+
+function redirectPath(req: NextRequest, path: string) {
+  return NextResponse.redirect(new URL(path, requestOrigin(req)));
 }
 
 export default middlewareAuth((req) => {
@@ -24,17 +45,17 @@ export default middlewareAuth((req) => {
     verifiedRequiredRoutes.some((r) => pathname.startsWith(r)) || isReplayUploadPath(pathname);
 
   if (isLoggedIn && isAuthRoute && pathname !== '/verify-email') {
-    return NextResponse.redirect(new URL('/dashboard', req.url));
+    return redirectPath(req, '/dashboard');
   }
 
   if (!isLoggedIn && isProtected) {
-    const loginUrl = new URL('/login', req.url);
+    const loginUrl = new URL('/login', requestOrigin(req));
     loginUrl.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
   if (isLoggedIn && needsVerification && !isVerified && pathname !== '/verify-email') {
-    return NextResponse.redirect(new URL('/verify-email', req.url));
+    return redirectPath(req, '/verify-email');
   }
 
   return NextResponse.next();
