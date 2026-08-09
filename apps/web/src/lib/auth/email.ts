@@ -7,7 +7,9 @@ function getResend() {
 }
 
 function getFromEmail() {
-  return process.env.EMAIL_FROM ?? 'CoachCore AI <noreply@coachcore.ai>';
+  // Prefer a verified-domain From address so ANY signup email can receive mail.
+  // Sandbox (onboarding@resend.dev) only delivers to the Resend account owner's inbox.
+  return process.env.EMAIL_FROM?.trim() || 'CoachCore AI <onboarding@resend.dev>';
 }
 
 export type SendEmailResult = {
@@ -26,11 +28,44 @@ function allowConsoleEmailFallback(): boolean {
   return process.env.ALLOW_CONSOLE_EMAIL !== '0';
 }
 
+function mapResendError(message: string | undefined, to: string): string {
+  const raw = message?.trim() || 'Resend rejected the email.';
+  const lower = raw.toLowerCase();
+
+  // Sandbox / testing-mode: only the Resend account email can receive mail
+  if (
+    lower.includes('only send testing emails') ||
+    lower.includes('you can only send') ||
+    lower.includes('verify a domain') ||
+    lower.includes('domain is not verified')
+  ) {
+    return (
+      `Cannot send to ${to} yet. In Resend, verify your own domain (Domains → Add), ` +
+      `then set Vercel EMAIL_FROM to e.g. "CoachCore AI <noreply@yourdomain.com>" and redeploy. ` +
+      `onboarding@resend.dev only delivers to your Resend login email.`
+    );
+  }
+
+  if (lower.includes('from') && (lower.includes('invalid') || lower.includes('not allowed'))) {
+    return (
+      `${raw} Set EMAIL_FROM to an address on a domain you verified in Resend ` +
+      `(not a random @gmail.com From address).`
+    );
+  }
+
+  return raw;
+}
+
 async function sendEmail(to: string, subject: string, html: string): Promise<SendEmailResult> {
+  const recipient = to.trim().toLowerCase();
+  if (!recipient) {
+    return { ok: false, error: 'Missing recipient email' };
+  }
+
   const resend = getResend();
   if (!resend) {
     if (allowConsoleEmailFallback()) {
-      console.log(`[email:dev] To: ${to}\nSubject: ${subject}\n${html}`);
+      console.log(`[email:dev] To: ${recipient}\nSubject: ${subject}\n${html}`);
       return { ok: true, loggedOnly: true };
     }
     console.error('[email] RESEND_API_KEY is not set — cannot send email');
@@ -41,27 +76,31 @@ async function sendEmail(to: string, subject: string, html: string): Promise<Sen
     };
   }
 
+  const from = getFromEmail();
+
   try {
+    // Always send to the account email the user signed up with (any provider/domain).
     const { data, error } = await resend.emails.send({
-      from: getFromEmail(),
-      to,
+      from,
+      to: [recipient],
       subject,
       html,
     });
     if (error) {
-      console.error('[email] Send failed:', error);
+      console.error('[email] Send failed:', { to: recipient, from, error });
       return {
         ok: false,
-        error: error.message || 'Resend rejected the email. Check EMAIL_FROM domain verification.',
+        error: mapResendError(error.message, recipient),
       };
     }
-    console.log('[email] Sent', { to, id: data?.id });
+    console.log('[email] Sent', { to: recipient, from, id: data?.id });
     return { ok: true };
   } catch (err) {
     console.error('[email] Send error:', err);
+    const message = err instanceof Error ? err.message : 'Failed to send email';
     return {
       ok: false,
-      error: err instanceof Error ? err.message : 'Failed to send email',
+      error: mapResendError(message, recipient),
     };
   }
 }
